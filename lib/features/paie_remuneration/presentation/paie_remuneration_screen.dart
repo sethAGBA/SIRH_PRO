@@ -18,6 +18,7 @@ import '../../../shared/models/avantage_social.dart';
 import '../../../shared/models/iuts_tranche.dart';
 import '../../../shared/models/paie_parametre.dart';
 import '../../../shared/models/paie_salaire.dart';
+import '../../../shared/models/parametres_entreprise.dart';
 
 class PaieRemunerationScreen extends StatefulWidget {
   const PaieRemunerationScreen({super.key});
@@ -591,10 +592,17 @@ class _PaieRemunerationScreenState extends State<PaieRemunerationScreen> {
     final name = employee?.name ?? 'Employe inconnu';
     final matricule = employee?.matricule.isNotEmpty == true ? employee!.matricule : '-';
     final job = employee?.job.isNotEmpty == true ? employee!.job : 'Poste a definir';
+    final company = await _loadEntreprise();
+    final logo = await _loadCompanyLogo(company?.logoPath ?? '');
     doc.addPage(
       pw.MultiPage(
+        footer: (context) => _pdfFooter(company),
         build: (context) => [
-          _pdfHeader(title: 'Bulletin de paie', period: _display(salary.period)),
+          _pdfCompanyHeader(
+            company: company,
+            logo: logo,
+            period: _display(salary.period),
+          ),
           pw.SizedBox(height: 16),
           _pdfSummaryCard(
             left: [
@@ -691,6 +699,34 @@ class _PaieRemunerationScreenState extends State<PaieRemunerationScreen> {
     if (!mounted) return;
     showOperationNotice(context, message: 'PDF exporte.', success: true);
     await OpenFilex.open(outputPath);
+  }
+
+  Future<ParametresEntreprise?> _loadEntreprise() async {
+    final row = await DaoRegistry.instance.parametresEntreprise.getFirst();
+    if (row == null) return null;
+    return ParametresEntreprise(
+      id: (row['id'] as String?) ?? 'company-1',
+      raisonSociale: (row['raison_sociale'] as String?) ?? '',
+      adresse: (row['adresse'] as String?) ?? '',
+      telephone: (row['telephone'] as String?) ?? '',
+      email: (row['email'] as String?) ?? '',
+      rccm: (row['rccm'] as String?) ?? '',
+      nif: (row['nif'] as String?) ?? '',
+      website: (row['website'] as String?) ?? '',
+      logoPath: (row['logo_path'] as String?) ?? '',
+      directeurNom: (row['directeur_nom'] as String?) ?? '',
+      localisation: (row['localisation'] as String?) ?? '',
+      siret: (row['siret'] as String?) ?? '',
+      conventionCollective: (row['convention_collective'] as String?) ?? '',
+    );
+  }
+
+  Future<pw.MemoryImage?> _loadCompanyLogo(String path) async {
+    if (path.isEmpty) return null;
+    final file = File(path);
+    if (!file.existsSync()) return null;
+    final bytes = await file.readAsBytes();
+    return pw.MemoryImage(bytes);
   }
 
   Future<void> _openVariableForm({AvantageSocial? variable}) async {
@@ -2913,36 +2949,77 @@ Future<Directory?> _fallbackExportDirectory() async {
   return getApplicationDocumentsDirectory();
 }
 
-pw.Widget _pdfHeader({required String title, required String period}) {
+pw.Widget _pdfCompanyHeader({
+  required ParametresEntreprise? company,
+  required pw.MemoryImage? logo,
+  required String period,
+}) {
   const primary = PdfColor.fromInt(0xFF0EA5E9);
   const dark = PdfColor.fromInt(0xFF0F172A);
+  final name = company?.raisonSociale ?? 'SIRH PRO';
+  final address = company?.adresse ?? '';
+  final phone = company?.telephone ?? '';
+  final email = company?.email ?? '';
+  final website = company?.website ?? '';
+  final rccm = company?.rccm ?? '';
+  final nif = company?.nif ?? '';
+  final headerRight = [
+    if (phone.isNotEmpty) phone,
+    if (email.isNotEmpty) email,
+    if (website.isNotEmpty) website,
+  ].join(' • ');
+  final legal = [
+    if (rccm.isNotEmpty) 'RCCM: $rccm',
+    if (nif.isNotEmpty) 'NIF: $nif',
+  ].join(' • ');
+
   return pw.Container(
     padding: const pw.EdgeInsets.all(16),
     decoration: const pw.BoxDecoration(
       color: primary,
       borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
     ),
-    child: pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.center,
+    child: pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Expanded(
-          child: pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(title, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
-              pw.SizedBox(height: 4),
-              pw.Text('Periode: $period', style: const pw.TextStyle(fontSize: 10, color: PdfColors.white)),
-            ],
-          ),
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            if (logo != null)
+              pw.Container(
+                width: 48,
+                height: 48,
+                decoration: const pw.BoxDecoration(color: PdfColors.white),
+                padding: const pw.EdgeInsets.all(4),
+                child: pw.Image(logo, fit: pw.BoxFit.contain),
+              ),
+            if (logo != null) pw.SizedBox(width: 10),
+            pw.Expanded(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(name, style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+                  if (address.isNotEmpty)
+                    pw.Text(address, style: const pw.TextStyle(fontSize: 9, color: PdfColors.white)),
+                  if (headerRight.isNotEmpty)
+                    pw.Text(headerRight, style: const pw.TextStyle(fontSize: 9, color: PdfColors.white)),
+                  if (legal.isNotEmpty)
+                    pw.Text(legal, style: const pw.TextStyle(fontSize: 9, color: PdfColors.white)),
+                ],
+              ),
+            ),
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: pw.BoxDecoration(
+                color: PdfColors.white,
+                borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+              ),
+              child: pw.Text('Periode: $period', style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: dark)),
+            ),
+          ],
         ),
-        pw.Container(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: pw.BoxDecoration(
-            color: PdfColors.white,
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
-          ),
-          child: pw.Text('SIRH PRO', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: dark)),
-        ),
+        pw.SizedBox(height: 8),
+        pw.Text('Bulletin de paie', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
       ],
     ),
   );
@@ -3014,5 +3091,30 @@ pw.Widget _pdfRow(String label, String value, {bool emphasize = false}) {
         ),
       ),
     ],
+  );
+}
+
+pw.Widget _pdfFooter(ParametresEntreprise? company) {
+  final rccm = company?.rccm ?? '';
+  final nif = company?.nif ?? '';
+  final mentions = <String>[
+    if (rccm.isNotEmpty) 'RCCM: $rccm',
+    if (nif.isNotEmpty) 'NIF: $nif',
+    'Ce bulletin est etabli sur la base des informations saisies.',
+  ].join(' • ');
+
+  return pw.Container(
+    padding: const pw.EdgeInsets.only(top: 8),
+    child: pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: [
+        pw.Divider(color: PdfColor.fromInt(0xFFE2E8F0)),
+        pw.Text(
+          mentions,
+          style: const pw.TextStyle(fontSize: 9, color: PdfColor.fromInt(0xFF64748B)),
+          textAlign: pw.TextAlign.center,
+        ),
+      ],
+    ),
   );
 }
