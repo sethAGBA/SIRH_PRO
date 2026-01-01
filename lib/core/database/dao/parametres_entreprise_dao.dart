@@ -30,6 +30,18 @@ class ParametresEntrepriseDao {
     return rows.first;
   }
 
+  Future<Map<String, dynamic>?> getFirst() async {
+    final db = await _sqlite.db;
+    final rows = await db.query(DbTables.parametresEntreprise, limit: 1);
+    if (rows.isEmpty) return null;
+    return rows.first;
+  }
+
+  Future<void> upsert(Map<String, dynamic> data) async {
+    final db = await _sqlite.db;
+    await db.insert(DbTables.parametresEntreprise, data, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
   Future<List<Map<String, dynamic>>> list({int? limit, int? offset, String? orderBy}) async {
     final db = await _sqlite.db;
     return db.query(

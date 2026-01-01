@@ -1,15 +1,19 @@
-import 'package:flutter/material.dart';
-
-import '../../../core/constants/app_constants.dart';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:crypto/crypto.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/database/dao/dao_registry.dart';
 import '../../../core/security/auth_service.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../../shared/models/parametres_entreprise.dart';
 
 class ParametresScreen extends StatefulWidget {
   const ParametresScreen({super.key});
@@ -105,11 +109,168 @@ class _ParametresScreenState extends State<ParametresScreen> {
   }
 }
 
-class _EntrepriseTab extends StatelessWidget {
+class _EntrepriseTab extends StatefulWidget {
   const _EntrepriseTab();
 
   @override
+  State<_EntrepriseTab> createState() => _EntrepriseTabState();
+}
+
+class _EntrepriseTabState extends State<_EntrepriseTab> {
+  final _formKey = GlobalKey<FormState>();
+
+  final _raisonSocialeCtrl = TextEditingController();
+  final _adresseCtrl = TextEditingController();
+  final _telephoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _rccmCtrl = TextEditingController();
+  final _nifCtrl = TextEditingController();
+  final _websiteCtrl = TextEditingController();
+  final _directeurCtrl = TextEditingController();
+  final _localisationCtrl = TextEditingController();
+  final _siretCtrl = TextEditingController();
+  final _conventionCtrl = TextEditingController();
+
+  String? _logoPath;
+  bool _loading = true;
+  ParametresEntreprise? _current;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEntreprise();
+  }
+
+  @override
+  void dispose() {
+    _raisonSocialeCtrl.dispose();
+    _adresseCtrl.dispose();
+    _telephoneCtrl.dispose();
+    _emailCtrl.dispose();
+    _rccmCtrl.dispose();
+    _nifCtrl.dispose();
+    _websiteCtrl.dispose();
+    _directeurCtrl.dispose();
+    _localisationCtrl.dispose();
+    _siretCtrl.dispose();
+    _conventionCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadEntreprise() async {
+    setState(() => _loading = true);
+    final row = await DaoRegistry.instance.parametresEntreprise.getFirst();
+    if (!mounted) return;
+    if (row == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    final info = _fromRow(row);
+    setState(() {
+      _current = info;
+      _raisonSocialeCtrl.text = info.raisonSociale;
+      _adresseCtrl.text = info.adresse;
+      _telephoneCtrl.text = info.telephone;
+      _emailCtrl.text = info.email;
+      _rccmCtrl.text = info.rccm;
+      _nifCtrl.text = info.nif;
+      _websiteCtrl.text = info.website;
+      _directeurCtrl.text = info.directeurNom;
+      _localisationCtrl.text = info.localisation;
+      _siretCtrl.text = info.siret;
+      _conventionCtrl.text = info.conventionCollective;
+      _logoPath = info.logoPath.isEmpty ? null : info.logoPath;
+      _loading = false;
+    });
+  }
+
+  ParametresEntreprise _fromRow(Map<String, dynamic> row) {
+    return ParametresEntreprise(
+      id: (row['id'] as String?) ?? 'company-1',
+      raisonSociale: (row['raison_sociale'] as String?) ?? '',
+      adresse: (row['adresse'] as String?) ?? '',
+      telephone: (row['telephone'] as String?) ?? '',
+      email: (row['email'] as String?) ?? '',
+      rccm: (row['rccm'] as String?) ?? '',
+      nif: (row['nif'] as String?) ?? '',
+      website: (row['website'] as String?) ?? '',
+      logoPath: (row['logo_path'] as String?) ?? '',
+      directeurNom: (row['directeur_nom'] as String?) ?? '',
+      localisation: (row['localisation'] as String?) ?? '',
+      siret: (row['siret'] as String?) ?? '',
+      conventionCollective: (row['convention_collective'] as String?) ?? '',
+    );
+  }
+
+  Map<String, dynamic> _toRow(ParametresEntreprise info) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    return {
+      'id': info.id,
+      'raison_sociale': info.raisonSociale,
+      'adresse': info.adresse,
+      'telephone': info.telephone,
+      'email': info.email,
+      'rccm': info.rccm,
+      'nif': info.nif,
+      'website': info.website,
+      'logo_path': info.logoPath,
+      'directeur_nom': info.directeurNom,
+      'localisation': info.localisation,
+      'siret': info.siret,
+      'convention_collective': info.conventionCollective,
+      'updated_at': now,
+      'created_at': now,
+    };
+  }
+
+  Future<void> _pickLogo() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final path = result.files.single.path;
+    if (path == null || path.isEmpty) return;
+
+    final appDir = await getApplicationDocumentsDirectory();
+    final logoDir = Directory(p.join(appDir.path, 'company_logo'));
+    if (!await logoDir.exists()) {
+      await logoDir.create(recursive: true);
+    }
+    final fileName = p.basename(path);
+    final newPath = p.join(logoDir.path, fileName);
+    final newFile = await File(path).copy(newPath);
+    setState(() => _logoPath = newFile.path);
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final info = ParametresEntreprise(
+      id: _current?.id ?? 'company-1',
+      raisonSociale: _raisonSocialeCtrl.text.trim(),
+      adresse: _adresseCtrl.text.trim(),
+      telephone: _telephoneCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      rccm: _rccmCtrl.text.trim(),
+      nif: _nifCtrl.text.trim(),
+      website: _websiteCtrl.text.trim(),
+      logoPath: _logoPath ?? '',
+      directeurNom: _directeurCtrl.text.trim(),
+      localisation: _localisationCtrl.text.trim(),
+      siret: _siretCtrl.text.trim(),
+      conventionCollective: _conventionCtrl.text.trim(),
+    );
+    await DaoRegistry.instance.parametresEntreprise.upsert(_toRow(info));
+    setState(() => _current = info);
+    if (!mounted) return;
+    showOperationNotice(context, message: 'Informations enregistrees.', success: true);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -119,11 +280,77 @@ class _EntrepriseTab extends StatelessWidget {
               children: [
                 Text('Informations societe', style: TextStyle(fontWeight: FontWeight.w600, color: appTextPrimary(context))),
                 const SizedBox(height: 12),
-                const _InfoRow(label: 'Raison sociale', value: 'SIRH Pro SA'),
-                const _InfoRow(label: 'SIRET', value: 'TG123456789'),
-                const _InfoRow(label: 'Convention collective', value: 'Industrie & services'),
-                const _InfoRow(label: 'Adresse', value: 'Lome, Quartier administratif'),
+                if (_logoPath != null && _logoPath!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(
+                        File(_logoPath!),
+                        height: 80,
+                        width: 80,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                _InfoRow(label: 'Raison sociale', value: _display(_raisonSocialeCtrl.text)),
+                _InfoRow(label: 'Adresse', value: _display(_adresseCtrl.text)),
+                _InfoRow(label: 'Telephone', value: _display(_telephoneCtrl.text)),
+                _InfoRow(label: 'Email', value: _display(_emailCtrl.text)),
+                _InfoRow(label: 'RCCM', value: _display(_rccmCtrl.text)),
+                _InfoRow(label: 'NIF', value: _display(_nifCtrl.text)),
+                _InfoRow(label: 'Site web', value: _display(_websiteCtrl.text)),
+                _InfoRow(label: 'Directeur', value: _display(_directeurCtrl.text)),
+                _InfoRow(label: 'Localisation', value: _display(_localisationCtrl.text)),
+                _InfoRow(label: 'SIRET', value: _display(_siretCtrl.text)),
+                _InfoRow(label: 'Convention collective', value: _display(_conventionCtrl.text)),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          AppCard(
+            child: Form(
+              key: _formKey,
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _EditField(controller: _raisonSocialeCtrl, label: 'Raison sociale'),
+                  _EditField(controller: _adresseCtrl, label: 'Adresse'),
+                  _EditField(controller: _telephoneCtrl, label: 'Telephone'),
+                  _EditField(controller: _emailCtrl, label: 'Email'),
+                  _EditField(controller: _rccmCtrl, label: 'RCCM'),
+                  _EditField(controller: _nifCtrl, label: 'NIF'),
+                  _EditField(controller: _websiteCtrl, label: 'Site web'),
+                  _EditField(controller: _directeurCtrl, label: 'Directeur'),
+                  _EditField(controller: _localisationCtrl, label: 'Localisation'),
+                  _EditField(controller: _siretCtrl, label: 'SIRET'),
+                  _EditField(controller: _conventionCtrl, label: 'Convention collective'),
+                  OutlinedButton.icon(
+                    onPressed: _pickLogo,
+                    icon: const Icon(Icons.image_outlined),
+                    label: const Text('Choisir logo'),
+                  ),
+                  if (_logoPath != null && _logoPath!.isNotEmpty)
+                    TextButton(
+                      onPressed: () => setState(() => _logoPath = null),
+                      child: const Text('Retirer logo'),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: _save,
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('Enregistrer'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -492,6 +719,24 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
+class _EditField extends StatelessWidget {
+  const _EditField({required this.controller, required this.label});
+
+  final TextEditingController controller;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 240,
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(labelText: label),
+      ),
+    );
+  }
+}
+
 class _StatusChip extends StatelessWidget {
   const _StatusChip({required this.status});
 
@@ -523,6 +768,10 @@ class _StatusChip extends StatelessWidget {
       ),
     );
   }
+}
+
+String _display(String value) {
+  return value.trim().isEmpty ? 'A definir' : value.trim();
 }
 
 class _RoleProfile {
