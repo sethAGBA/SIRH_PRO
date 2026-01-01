@@ -1,7 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/database/dao/dao_registry.dart';
@@ -575,14 +580,34 @@ class _PaieRemunerationScreenState extends State<PaieRemunerationScreen> {
   }
 
   Future<void> _exportPayslipPdf(PaieSalaire salary, _EmployeeInfo? employee) async {
-    final doc = pw.Document();
+    final regular = await pw.Font.times();
+    final bold = await pw.Font.timesBold();
+    final doc = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: regular,
+        bold: bold,
+      ),
+    );
     final name = employee?.name ?? 'Employe inconnu';
     final matricule = employee?.matricule.isNotEmpty == true ? employee!.matricule : '-';
     final job = employee?.job.isNotEmpty == true ? employee!.job : 'Poste a definir';
     doc.addPage(
       pw.MultiPage(
         build: (context) => [
-          pw.Text('Bulletin de paie', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+          _pdfHeader(title: 'Bulletin de paie', period: _display(salary.period)),
+          pw.SizedBox(height: 16),
+          _pdfSummaryCard(
+            left: [
+              _pdfRow('Employe', name),
+              _pdfRow('Matricule', matricule),
+              _pdfRow('Poste', job),
+            ],
+            right: [
+              _pdfRow('Statut', _display(salary.status)),
+              _pdfRow('Net a payer', _fmtAmount(salary.netAPayer)),
+              _pdfRow('Date paiement', salary.paymentDate == null ? 'A definir' : _formatDate(salary.paymentDate!)),
+            ],
+          ),
           pw.SizedBox(height: 12),
           _pdfSection(
             'Identification',
@@ -614,7 +639,7 @@ class _PaieRemunerationScreenState extends State<PaieRemunerationScreen> {
               _pdfRow('Impots (IUTS)', _fmtAmount(salary.impots)),
               _pdfRow('Avances', _fmtAmount(salary.avances)),
               _pdfRow('Autres retenues', _fmtAmount(salary.otherDeductions)),
-              _pdfRow('Net a payer', _fmtAmount(salary.netAPayer)),
+              _pdfRow('Net a payer', _fmtAmount(salary.netAPayer), emphasize: true),
             ],
           ),
           _pdfSection(
@@ -636,7 +661,36 @@ class _PaieRemunerationScreenState extends State<PaieRemunerationScreen> {
         ],
       ),
     );
-    await Printing.layoutPdf(onLayout: (format) async => doc.save());
+    String? outputPath;
+    try {
+      outputPath = await FilePicker.platform.saveFile(
+        dialogTitle: 'Enregistrer le bulletin (PDF)',
+        fileName: _safeFileName('bulletin_${matricule}_${salary.period}.pdf'),
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+    } catch (error) {
+      outputPath = null;
+    }
+    if (outputPath == null || outputPath.isEmpty) {
+      final fallbackDir = await _fallbackExportDirectory();
+      final fallbackPath = fallbackDir == null
+          ? null
+          : p.join(fallbackDir.path, _safeFileName('bulletin_${matricule}_${salary.period}.pdf'));
+      outputPath = fallbackPath;
+      if (!mounted) return;
+      showOperationNotice(
+        context,
+        message: 'Selection dossier indisponible. Export dans le dossier par defaut.',
+        success: true,
+      );
+    }
+    if (outputPath == null || outputPath.isEmpty) return;
+    final file = File(outputPath);
+    await file.writeAsBytes(await doc.save());
+    if (!mounted) return;
+    showOperationNotice(context, message: 'PDF exporte.', success: true);
+    await OpenFilex.open(outputPath);
   }
 
   Future<void> _openVariableForm({AvantageSocial? variable}) async {
@@ -2848,18 +2902,94 @@ String _extractYear(String period) {
   return match?.group(1) ?? '';
 }
 
+String _safeFileName(String value) {
+  final sanitized = value.replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '_');
+  return sanitized.isEmpty ? 'bulletin.pdf' : sanitized;
+}
+
+Future<Directory?> _fallbackExportDirectory() async {
+  final downloads = await getDownloadsDirectory();
+  if (downloads != null) return downloads;
+  return getApplicationDocumentsDirectory();
+}
+
+pw.Widget _pdfHeader({required String title, required String period}) {
+  const primary = PdfColor.fromInt(0xFF0EA5E9);
+  const dark = PdfColor.fromInt(0xFF0F172A);
+  return pw.Container(
+    padding: const pw.EdgeInsets.all(16),
+    decoration: const pw.BoxDecoration(
+      color: primary,
+      borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
+    ),
+    child: pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.center,
+      children: [
+        pw.Expanded(
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(title, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.white)),
+              pw.SizedBox(height: 4),
+              pw.Text('Periode: $period', style: const pw.TextStyle(fontSize: 10, color: PdfColors.white)),
+            ],
+          ),
+        ),
+        pw.Container(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: pw.BoxDecoration(
+            color: PdfColors.white,
+            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
+          ),
+          child: pw.Text('SIRH PRO', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: dark)),
+        ),
+      ],
+    ),
+  );
+}
+
+pw.Widget _pdfSummaryCard({required List<pw.Widget> left, required List<pw.Widget> right}) {
+  return pw.Container(
+    padding: const pw.EdgeInsets.all(12),
+    decoration: pw.BoxDecoration(
+      color: PdfColor.fromInt(0xFFF8FAFC),
+      border: pw.Border.all(color: PdfColor.fromInt(0xFFE2E8F0)),
+      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+    ),
+    child: pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Expanded(
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: left,
+          ),
+        ),
+        pw.SizedBox(width: 16),
+        pw.Expanded(
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: right,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 pw.Widget _pdfSection(String title, List<pw.Widget> rows) {
   return pw.Container(
     margin: const pw.EdgeInsets.only(bottom: 12),
     padding: const pw.EdgeInsets.all(12),
     decoration: pw.BoxDecoration(
-      border: pw.Border.all(color: PdfColor.fromInt(0xFFDDDDDD)),
+      color: PdfColor.fromInt(0xFFFFFFFF),
+      border: pw.Border.all(color: PdfColor.fromInt(0xFFE2E8F0)),
       borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6)),
     ),
     child: pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: [
-        pw.Text(title, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+        pw.Text(title, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, color: PdfColor.fromInt(0xFF0F172A))),
         pw.SizedBox(height: 8),
         pw.Column(children: rows),
       ],
@@ -2867,13 +2997,21 @@ pw.Widget _pdfSection(String title, List<pw.Widget> rows) {
   );
 }
 
-pw.Widget _pdfRow(String label, String value) {
+pw.Widget _pdfRow(String label, String value, {bool emphasize = false}) {
   return pw.Row(
     mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
     children: [
-      pw.Expanded(child: pw.Text(label, style: const pw.TextStyle(fontSize: 10))),
+      pw.Expanded(child: pw.Text(label, style: const pw.TextStyle(fontSize: 10, color: PdfColor.fromInt(0xFF475569)))),
       pw.Expanded(
-        child: pw.Text(value, style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold), textAlign: pw.TextAlign.right),
+        child: pw.Text(
+          value,
+          style: pw.TextStyle(
+            fontSize: emphasize ? 11 : 10,
+            fontWeight: pw.FontWeight.bold,
+            color: emphasize ? PdfColor.fromInt(0xFF0EA5E9) : PdfColor.fromInt(0xFF0F172A),
+          ),
+          textAlign: pw.TextAlign.right,
+        ),
       ),
     ],
   );

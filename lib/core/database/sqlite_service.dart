@@ -8,7 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:convert';
 
 class SQLiteService {
-  static const int _schemaVersion = 18;
+  static const int _schemaVersion = 19;
   static final SQLiteService _instance = SQLiteService._internal();
   factory SQLiteService() => _instance;
   SQLiteService._internal();
@@ -142,6 +142,9 @@ class SQLiteService {
       }
       if (version == 18) {
         await _migrateToV18(db);
+      }
+      if (version == 19) {
+        await _migrateToV19(db);
       }
     }
   }
@@ -410,6 +413,20 @@ class SQLiteService {
       for (final entry in columns.entries) {
         await _addColumnIfMissing(db, table, entry.key, entry.value);
       }
+    }
+  }
+
+  Future<void> _migrateToV19(Database db) async {
+    final table = 'parametres_entreprise';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
     }
   }
 
@@ -893,9 +910,17 @@ final Map<String, Map<String, String>> _schema = {
   'parametres_entreprise': {
     'id': 'TEXT PRIMARY KEY',
     'raison_sociale': 'TEXT',
+    'adresse': 'TEXT',
+    'telephone': 'TEXT',
+    'email': 'TEXT',
+    'rccm': 'TEXT',
+    'nif': 'TEXT',
+    'website': 'TEXT',
+    'logo_path': 'TEXT',
+    'directeur_nom': 'TEXT',
+    'localisation': 'TEXT',
     'siret': 'TEXT',
     'convention_collective': 'TEXT',
-    'adresse': 'TEXT',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },
