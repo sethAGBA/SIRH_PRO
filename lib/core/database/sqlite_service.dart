@@ -8,6 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:convert';
 
 class SQLiteService {
+  static const int _schemaVersion = 2;
   static final SQLiteService _instance = SQLiteService._internal();
   factory SQLiteService() => _instance;
   SQLiteService._internal();
@@ -33,9 +34,12 @@ class SQLiteService {
     _db = await dbFactory.openDatabase(
       pathToOpen,
       options: OpenDatabaseOptions(
-        version: 1,
+        version: _schemaVersion,
         onCreate: (db, version) async {
           await _createSchema(db);
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          await _migrateSchema(db, oldVersion, newVersion);
         },
         onOpen: (db) async {
           await _ensureSchema(db);
@@ -86,6 +90,28 @@ class SQLiteService {
     }
   }
 
+  Future<void> _migrateSchema(Database db, int oldVersion, int newVersion) async {
+    for (var version = oldVersion + 1; version <= newVersion; version++) {
+      if (version == 2) {
+        await _migrateToV2(db);
+      }
+    }
+  }
+
+  Future<void> _migrateToV2(Database db) async {
+    final table = 'employes';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
   Future<bool> _tableExists(Database db, String table) async {
     final rows = await db.rawQuery(
       "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
@@ -97,6 +123,13 @@ class SQLiteService {
   Future<bool> _columnExists(Database db, String table, String column) async {
     final rows = await db.rawQuery('PRAGMA table_info($table)');
     return rows.any((row) => row['name'] == column);
+  }
+
+  Future<void> _addColumnIfMissing(Database db, String table, String column, String type) async {
+    final hasColumn = await _columnExists(db, table, column);
+    if (!hasColumn) {
+      await db.execute('ALTER TABLE $table ADD COLUMN $column $type');
+    }
   }
 
   Future<void> _ensureDefaultAdmin(Database db) async {
@@ -128,10 +161,94 @@ final Map<String, Map<String, String>> _schema = {
     'nom_complet': 'TEXT',
     'departement_id': 'TEXT',
     'poste_id': 'TEXT',
+    'contract_type': 'TEXT',
     'statut_contrat': 'TEXT',
+    'statut_employe': 'TEXT',
+    'tenure': 'TEXT',
     'date_embauche': 'INTEGER',
     'telephone': 'TEXT',
     'email': 'TEXT',
+    'skills': 'TEXT',
+    'date_naissance': 'TEXT',
+    'lieu_naissance': 'TEXT',
+    'nationalite': 'TEXT',
+    'etat_civil_detaille': 'TEXT',
+    'nir': 'TEXT',
+    'situation_familiale': 'TEXT',
+    'adresse': 'TEXT',
+    'contact_urgence': 'TEXT',
+    'cni': 'TEXT',
+    'passeport': 'TEXT',
+    'permis': 'TEXT',
+    'titre_sejour': 'TEXT',
+    'rib': 'TEXT',
+    'bic': 'TEXT',
+    'salaire_verse': 'TEXT',
+    'poste_actuel': 'TEXT',
+    'poste_precedent': 'TEXT',
+    'derniere_promotion': 'TEXT',
+    'augmentation': 'TEXT',
+    'objectifs': 'TEXT',
+    'evaluation': 'TEXT',
+    'contract_start_date': 'TEXT',
+    'contract_end_date': 'TEXT',
+    'periode_essai_duree': 'TEXT',
+    'periode_essai_fin': 'TEXT',
+    'temps_travail_type': 'TEXT',
+    'temps_partiel_pourcentage': 'TEXT',
+    'classification': 'TEXT',
+    'coefficient': 'TEXT',
+    'convention_collective': 'TEXT',
+    'statut_cadre': 'TEXT',
+    'avenants': 'TEXT',
+    'charte_informatique': 'TEXT',
+    'confidentialite': 'TEXT',
+    'clauses_signees': 'TEXT',
+    'carte_vitale': 'TEXT',
+    'justificatif_domicile': 'TEXT',
+    'diplomes_certifies': 'TEXT',
+    'habilitations': 'TEXT',
+    'diplome': 'TEXT',
+    'certification': 'TEXT',
+    'formations_suivies': 'TEXT',
+    'formations_planifiees': 'TEXT',
+    'competences_tech': 'TEXT',
+    'competences_comport': 'TEXT',
+    'langues': 'TEXT',
+    'conges_restants': 'TEXT',
+    'rtt_restants': 'TEXT',
+    'absences_justifiees': 'TEXT',
+    'retards': 'TEXT',
+    'teletravail': 'TEXT',
+    'dernier_pointage': 'TEXT',
+    'planning_contractuel': 'TEXT',
+    'quota_heures': 'TEXT',
+    'solde_conges_calcule': 'TEXT',
+    'rtt_periode': 'TEXT',
+    'salaire_base': 'TEXT',
+    'prime_performance': 'TEXT',
+    'mutuelle': 'TEXT',
+    'ticket_restaurant': 'TEXT',
+    'dernier_bulletin': 'TEXT',
+    'historique_bulletins': 'TEXT',
+    'regime_fiscal': 'TEXT',
+    'taux_pas': 'TEXT',
+    'mode_paiement': 'TEXT',
+    'variables_recurrence': 'TEXT',
+    'pc_portable': 'TEXT',
+    'telephone_pro': 'TEXT',
+    'badge_acces': 'TEXT',
+    'licence': 'TEXT',
+    'manager': 'TEXT',
+    'entite_legale': 'TEXT',
+    'site_affectation': 'TEXT',
+    'centre_cout': 'TEXT',
+    'consentement_rgpd': 'TEXT',
+    'habilitations_systemes': 'TEXT',
+    'historique_modifications': 'TEXT',
+    'visites_medicales': 'TEXT',
+    'aptitude_medicale': 'TEXT',
+    'restrictions_poste': 'TEXT',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },

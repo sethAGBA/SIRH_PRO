@@ -69,7 +69,11 @@ class _InfoPersonnellesTab extends StatelessWidget {
           rows: [
             _FieldRow(label: 'Nom complet', value: employe.fullName),
             _FieldRow(label: 'Date naissance', value: _display(employe.dateNaissance)),
+            _FieldRow(label: 'Lieu naissance', value: _display(employe.lieuNaissance)),
+            _FieldRow(label: 'Nationalite', value: _display(employe.nationalite)),
             _FieldRow(label: 'Situation familiale', value: _display(employe.situationFamiliale)),
+            _FieldRow(label: 'Etat civil detaille', value: _display(employe.etatCivilDetaille)),
+            _FieldRow(label: 'Numero securite sociale', value: _display(employe.nir)),
           ],
         ),
         _SectionContent(
@@ -88,12 +92,14 @@ class _InfoPersonnellesTab extends StatelessWidget {
             _FieldRow(label: 'CNI', value: _display(employe.cni)),
             _FieldRow(label: 'Passeport', value: _display(employe.passeport)),
             _FieldRow(label: 'Permis', value: _display(employe.permis)),
+            _FieldRow(label: 'Titre de sejour', value: _display(employe.titreSejour)),
           ],
         ),
         _SectionContent(
           title: 'Donnees bancaires',
           rows: [
             _FieldRow(label: 'RIB', value: _display(employe.rib)),
+            _FieldRow(label: 'BIC', value: _display(employe.bic)),
             _FieldRow(label: 'Salaire verse', value: _display(employe.salaireVerse)),
           ],
         ),
@@ -126,6 +132,15 @@ class _CarriereTab extends StatelessWidget {
           rows: [
             _FieldRow(label: 'Poste actuel', value: _display(employe.posteActuel)),
             _FieldRow(label: 'Poste precedent', value: _display(employe.postePrecedent)),
+          ],
+        ),
+        _SectionContent(
+          title: 'Organisation',
+          rows: [
+            _FieldRow(label: 'Manager direct', value: _display(employe.manager)),
+            _FieldRow(label: 'Entite legale', value: _display(employe.entiteLegale)),
+            _FieldRow(label: 'Site / etablissement', value: _display(employe.siteAffectation)),
+            _FieldRow(label: 'Centre de cout', value: _display(employe.centreCout)),
           ],
         ),
         _SectionContent(
@@ -163,7 +178,21 @@ class _ContratsTab extends StatelessWidget {
           rows: [
             _FieldRow(label: 'Type', value: _display(employe.contractType)),
             _FieldRow(label: 'Date debut', value: _display(employe.contractStartDate)),
+            _FieldRow(label: 'Date fin', value: _display(employe.contractEndDate)),
             _FieldRow(label: 'Statut', value: _display(employe.contractStatus)),
+          ],
+        ),
+        _SectionContent(
+          title: 'Conditions de travail',
+          rows: [
+            _FieldRow(label: 'Periode essai (duree)', value: _display(employe.periodeEssaiDuree)),
+            _FieldRow(label: 'Periode essai (fin)', value: _display(employe.periodeEssaiFin)),
+            _FieldRow(label: 'Temps de travail', value: _display(employe.tempsTravailType)),
+            _FieldRow(label: 'Temps partiel (%)', value: _display(employe.tempsPartielPourcentage)),
+            _FieldRow(label: 'Classification', value: _display(employe.classification)),
+            _FieldRow(label: 'Coefficient', value: _display(employe.coefficient)),
+            _FieldRow(label: 'Convention collective', value: _display(employe.conventionCollective)),
+            _FieldRow(label: 'Statut cadre', value: _display(employe.statutCadre)),
           ],
         ),
         _SectionContent(
@@ -172,6 +201,16 @@ class _ContratsTab extends StatelessWidget {
             _FieldRow(label: 'Avenants', value: _display(employe.avenants)),
             _FieldRow(label: 'Charte informatique', value: _display(employe.charteInformatique)),
             _FieldRow(label: 'Confidentialite', value: _display(employe.confidentialite)),
+            _FieldRow(label: 'Clauses signees', value: _display(employe.clausesSignees)),
+          ],
+        ),
+        _SectionContent(
+          title: 'Documents obligatoires',
+          rows: [
+            _FieldRow(label: 'Carte vitale / attestation', value: _display(employe.carteVitale)),
+            _FieldRow(label: 'Justificatif domicile', value: _display(employe.justificatifDomicile)),
+            _FieldRow(label: 'Diplomes certifies', value: _display(employe.diplomesCertifies)),
+            _FieldRow(label: 'Habilitations', value: _display(employe.habilitations)),
           ],
         ),
       ],
@@ -249,6 +288,15 @@ class _PresencesTab extends StatelessWidget {
             _FieldRow(label: 'Dernier pointage', value: _display(employe.dernierPointage)),
           ],
         ),
+        _SectionContent(
+          title: 'Temps de travail',
+          rows: [
+            _FieldRow(label: 'Planning contractuel', value: _display(employe.planningContractuel)),
+            _FieldRow(label: 'Quota heures', value: _display(employe.quotaHeures)),
+            _FieldRow(label: 'Solde conges calcule', value: _display(employe.soldeCongesCalcule)),
+            _FieldRow(label: 'RTT par periode', value: _display(employe.rttPeriode)),
+          ],
+        ),
       ],
     );
   }
@@ -286,6 +334,15 @@ class _RemunerationTab extends StatelessWidget {
             _FieldRow(label: 'Historique', value: _display(employe.historiqueBulletins)),
           ],
         ),
+        _SectionContent(
+          title: 'Fiscalite et paiement',
+          rows: [
+            _FieldRow(label: 'Regime fiscal', value: _display(employe.regimeFiscal)),
+            _FieldRow(label: 'Taux PAS', value: _display(employe.tauxPas)),
+            _FieldRow(label: 'Mode paiement', value: _display(employe.modePaiement)),
+            _FieldRow(label: 'Variables recurrentes', value: _display(employe.variablesRecurrence)),
+          ],
+        ),
       ],
     );
   }
@@ -314,6 +371,22 @@ class _EquipementsTab extends StatelessWidget {
           rows: [
             _FieldRow(label: 'Badge acces', value: _display(employe.badgeAcces)),
             _FieldRow(label: 'Licence', value: _display(employe.licence)),
+          ],
+        ),
+        _SectionContent(
+          title: 'Conformite et securite',
+          rows: [
+            _FieldRow(label: 'Consentement RGPD', value: _display(employe.consentementRgpd)),
+            _FieldRow(label: 'Habilitations systemes', value: _display(employe.habilitationsSystemes)),
+            _FieldRow(label: 'Historique modifications', value: _display(employe.historiqueModifications)),
+          ],
+        ),
+        _SectionContent(
+          title: 'Sante et securite',
+          rows: [
+            _FieldRow(label: 'Visites medicales', value: _display(employe.visitesMedicales)),
+            _FieldRow(label: 'Aptitude medicale', value: _display(employe.aptitudeMedicale)),
+            _FieldRow(label: 'Restrictions poste', value: _display(employe.restrictionsPoste)),
           ],
         ),
       ],
