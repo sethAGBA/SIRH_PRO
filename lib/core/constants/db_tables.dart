@@ -10,6 +10,8 @@ class DbTables {
   static const String competences = 'competences';
   static const String recrutements = 'recrutements';
   static const String paieSalaires = 'paie_salaires';
+  static const String paieParametres = 'paie_parametres';
+  static const String paieIutsTranches = 'paie_iuts_tranches';
   static const String avantagesSociaux = 'avantages_sociaux';
   static const String sanctionsAvertissements = 'sanctions_avertissements';
   static const String notesFrais = 'notes_frais';
@@ -36,6 +38,8 @@ class DbTables {
     competences,
     recrutements,
     paieSalaires,
+    paieParametres,
+    paieIutsTranches,
     avantagesSociaux,
     sanctionsAvertissements,
     notesFrais,

@@ -16,6 +16,8 @@ import 'mobilite_interne_dao.dart';
 import 'notes_frais_dao.dart';
 import 'organigramme_dao.dart';
 import 'paie_dao.dart';
+import 'paie_iuts_tranches_dao.dart';
+import 'paie_parametres_dao.dart';
 import 'planning_horaire_dao.dart';
 import 'poste_dao.dart';
 import 'presence_dao.dart';
@@ -38,6 +40,8 @@ class DaoRegistry {
     competences = CompetenceDao(sqlite: _sqlite);
     recrutements = RecrutementDao(sqlite: _sqlite);
     paies = PaieDao(sqlite: _sqlite);
+    paieParametres = PaieParametresDao(sqlite: _sqlite);
+    paieIutsTranches = PaieIutsTranchesDao(sqlite: _sqlite);
     avantages = AvantageDao(sqlite: _sqlite);
     sanctions = SanctionDao(sqlite: _sqlite);
     notesFrais = NotesFraisDao(sqlite: _sqlite);
@@ -66,6 +70,8 @@ class DaoRegistry {
   late final CompetenceDao competences;
   late final RecrutementDao recrutements;
   late final PaieDao paies;
+  late final PaieParametresDao paieParametres;
+  late final PaieIutsTranchesDao paieIutsTranches;
   late final AvantageDao avantages;
   late final SanctionDao sanctions;
   late final NotesFraisDao notesFrais;

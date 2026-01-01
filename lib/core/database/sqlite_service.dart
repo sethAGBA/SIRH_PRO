@@ -8,7 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:convert';
 
 class SQLiteService {
-  static const int _schemaVersion = 16;
+  static const int _schemaVersion = 18;
   static final SQLiteService _instance = SQLiteService._internal();
   factory SQLiteService() => _instance;
   SQLiteService._internal();
@@ -136,6 +136,12 @@ class SQLiteService {
       }
       if (version == 16) {
         await _migrateToV16(db);
+      }
+      if (version == 17) {
+        await _migrateToV17(db);
+      }
+      if (version == 18) {
+        await _migrateToV18(db);
       }
     }
   }
@@ -363,6 +369,36 @@ class SQLiteService {
 
   Future<void> _migrateToV16(Database db) async {
     const tables = ['formations', 'entretiens_individuels'];
+    for (final table in tables) {
+      final columns = _schema[table]!;
+      final exists = await _tableExists(db, table);
+      if (!exists) {
+        final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+        await db.execute(sql);
+        continue;
+      }
+      for (final entry in columns.entries) {
+        await _addColumnIfMissing(db, table, entry.key, entry.value);
+      }
+    }
+  }
+
+  Future<void> _migrateToV17(Database db) async {
+    final table = 'paie_salaires';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV18(Database db) async {
+    const tables = ['paie_parametres', 'paie_iuts_tranches'];
     for (final table in tables) {
       final columns = _schema[table]!;
       final exists = await _tableExists(db, table);
@@ -706,7 +742,44 @@ final Map<String, Map<String, String>> _schema = {
     'periode': 'TEXT',
     'brut': 'REAL',
     'net': 'REAL',
+    'salaire_base': 'REAL',
+    'heures_travaillees': 'REAL',
+    'heures_supp': 'REAL',
+    'jours_absence': 'REAL',
+    'primes': 'REAL',
+    'avances': 'REAL',
+    'autres_retenues': 'REAL',
+    'cotisations_salariales': 'REAL',
+    'cotisations_patronales': 'REAL',
+    'impots': 'REAL',
+    'net_imposable': 'REAL',
+    'net_a_payer': 'REAL',
+    'mode_paiement': 'TEXT',
+    'date_paiement': 'INTEGER',
+    'reference_paiement': 'TEXT',
+    'statut_paiement': 'TEXT',
+    'created_by': 'TEXT',
+    'updated_by': 'TEXT',
     'statut': 'TEXT',
+    'created_at': 'INTEGER',
+    'updated_at': 'INTEGER',
+  },
+  'paie_parametres': {
+    'id': 'TEXT PRIMARY KEY',
+    'code': 'TEXT',
+    'label': 'TEXT',
+    'valeur': 'REAL',
+    'unite': 'TEXT',
+    'categorie': 'TEXT',
+    'description': 'TEXT',
+    'created_at': 'INTEGER',
+    'updated_at': 'INTEGER',
+  },
+  'paie_iuts_tranches': {
+    'id': 'TEXT PRIMARY KEY',
+    'min_val': 'REAL',
+    'max_val': 'REAL',
+    'taux': 'REAL',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },
