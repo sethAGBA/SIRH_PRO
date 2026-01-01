@@ -39,4 +39,95 @@ class EntretienIndividuelDao {
       offset: offset,
     );
   }
+
+  Future<List<Map<String, dynamic>>> search({
+    String? query,
+    String? status,
+    String? type,
+    int? startDate,
+    int? endDate,
+    int? limit,
+    int? offset,
+    String? orderBy,
+  }) async {
+    final db = await _sqlite.db;
+    final where = <String>[];
+    final args = <Object?>[];
+
+    if (query != null && query.trim().isNotEmpty) {
+      where.add('(employe_nom LIKE ? OR poste LIKE ? OR manager LIKE ?)');
+      final like = '%${query.trim()}%';
+      args.add(like);
+      args.add(like);
+      args.add(like);
+    }
+    if (status != null && status.isNotEmpty) {
+      where.add('statut = ?');
+      args.add(status);
+    }
+    if (type != null && type.isNotEmpty) {
+      where.add('type = ?');
+      args.add(type);
+    }
+    if (startDate != null) {
+      where.add('date >= ?');
+      args.add(startDate);
+    }
+    if (endDate != null) {
+      where.add('date <= ?');
+      args.add(endDate);
+    }
+
+    return db.query(
+      DbTables.entretiensIndividuels,
+      where: where.isEmpty ? null : where.join(' AND '),
+      whereArgs: args,
+      orderBy: orderBy ?? 'date DESC',
+      limit: limit,
+      offset: offset,
+    );
+  }
+
+  Future<int> count({
+    String? query,
+    String? status,
+    String? type,
+    int? startDate,
+    int? endDate,
+  }) async {
+    final db = await _sqlite.db;
+    final where = <String>[];
+    final args = <Object?>[];
+
+    if (query != null && query.trim().isNotEmpty) {
+      where.add('(employe_nom LIKE ? OR poste LIKE ? OR manager LIKE ?)');
+      final like = '%${query.trim()}%';
+      args.add(like);
+      args.add(like);
+      args.add(like);
+    }
+    if (status != null && status.isNotEmpty) {
+      where.add('statut = ?');
+      args.add(status);
+    }
+    if (type != null && type.isNotEmpty) {
+      where.add('type = ?');
+      args.add(type);
+    }
+    if (startDate != null) {
+      where.add('date >= ?');
+      args.add(startDate);
+    }
+    if (endDate != null) {
+      where.add('date <= ?');
+      args.add(endDate);
+    }
+
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as total FROM ${DbTables.entretiensIndividuels}'
+      '${where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}'}',
+      args,
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
 }

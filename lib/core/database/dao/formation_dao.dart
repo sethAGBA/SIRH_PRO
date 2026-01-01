@@ -39,4 +39,93 @@ class FormationDao {
       offset: offset,
     );
   }
+
+  Future<List<Map<String, dynamic>>> search({
+    String? query,
+    String? category,
+    String? status,
+    int? startDate,
+    int? endDate,
+    int? limit,
+    int? offset,
+    String? orderBy,
+  }) async {
+    final db = await _sqlite.db;
+    final where = <String>[];
+    final args = <Object?>[];
+
+    if (query != null && query.trim().isNotEmpty) {
+      where.add('(titre LIKE ? OR categorie LIKE ?)');
+      final like = '%${query.trim()}%';
+      args.add(like);
+      args.add(like);
+    }
+    if (category != null && category.isNotEmpty) {
+      where.add('categorie = ?');
+      args.add(category);
+    }
+    if (status != null && status.isNotEmpty) {
+      where.add('statut = ?');
+      args.add(status);
+    }
+    if (startDate != null) {
+      where.add('date_debut >= ?');
+      args.add(startDate);
+    }
+    if (endDate != null) {
+      where.add('date_fin <= ?');
+      args.add(endDate);
+    }
+
+    return db.query(
+      DbTables.formations,
+      where: where.isEmpty ? null : where.join(' AND '),
+      whereArgs: args,
+      orderBy: orderBy ?? 'date_debut DESC',
+      limit: limit,
+      offset: offset,
+    );
+  }
+
+  Future<int> count({
+    String? query,
+    String? category,
+    String? status,
+    int? startDate,
+    int? endDate,
+  }) async {
+    final db = await _sqlite.db;
+    final where = <String>[];
+    final args = <Object?>[];
+
+    if (query != null && query.trim().isNotEmpty) {
+      where.add('(titre LIKE ? OR categorie LIKE ?)');
+      final like = '%${query.trim()}%';
+      args.add(like);
+      args.add(like);
+    }
+    if (category != null && category.isNotEmpty) {
+      where.add('categorie = ?');
+      args.add(category);
+    }
+    if (status != null && status.isNotEmpty) {
+      where.add('statut = ?');
+      args.add(status);
+    }
+    if (startDate != null) {
+      where.add('date_debut >= ?');
+      args.add(startDate);
+    }
+    if (endDate != null) {
+      where.add('date_fin <= ?');
+      args.add(endDate);
+    }
+
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as total FROM ${DbTables.formations}'
+      '${where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}'}',
+      args,
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
 }

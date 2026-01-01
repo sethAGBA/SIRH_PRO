@@ -8,7 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:convert';
 
 class SQLiteService {
-  static const int _schemaVersion = 12;
+  static const int _schemaVersion = 16;
   static final SQLiteService _instance = SQLiteService._internal();
   factory SQLiteService() => _instance;
   SQLiteService._internal();
@@ -124,6 +124,18 @@ class SQLiteService {
       }
       if (version == 12) {
         await _migrateToV12(db);
+      }
+      if (version == 13) {
+        await _migrateToV13(db);
+      }
+      if (version == 14) {
+        await _migrateToV14(db);
+      }
+      if (version == 15) {
+        await _migrateToV15(db);
+      }
+      if (version == 16) {
+        await _migrateToV16(db);
       }
     }
   }
@@ -304,6 +316,64 @@ class SQLiteService {
     }
     for (final entry in columns.entries) {
       await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV13(Database db) async {
+    final table = 'recrutements';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV14(Database db) async {
+    final table = 'postes';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV15(Database db) async {
+    final table = 'recrutements';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV16(Database db) async {
+    const tables = ['formations', 'entretiens_individuels'];
+    for (final table in tables) {
+      final columns = _schema[table]!;
+      final exists = await _tableExists(db, table);
+      if (!exists) {
+        final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+        await db.execute(sql);
+        continue;
+      }
+      for (final entry in columns.entries) {
+        await _addColumnIfMissing(db, table, entry.key, entry.value);
+      }
     }
   }
 
@@ -500,6 +570,24 @@ final Map<String, Map<String, String>> _schema = {
     'departement_id': 'TEXT',
     'departement_nom': 'TEXT',
     'niveau': 'TEXT',
+    'type_contrat': 'TEXT',
+    'localisation': 'TEXT',
+    'salaire_range': 'TEXT',
+    'missions': 'TEXT',
+    'responsabilites': 'TEXT',
+    'liens_hierarchiques': 'TEXT',
+    'formation': 'TEXT',
+    'experience': 'TEXT',
+    'competences_tech': 'TEXT',
+    'competences_comport': 'TEXT',
+    'langues': 'TEXT',
+    'duree_cdd': 'TEXT',
+    'avantages': 'TEXT',
+    'date_prise_poste': 'TEXT',
+    'sites_emploi': 'TEXT',
+    'reseaux_sociaux': 'TEXT',
+    'cooptation_interne': 'TEXT',
+    'cabinets': 'TEXT',
     'statut': 'TEXT',
     'deleted_at': 'INTEGER',
     'created_at': 'INTEGER',
@@ -562,6 +650,12 @@ final Map<String, Map<String, String>> _schema = {
     'date_fin': 'INTEGER',
     'budget': 'REAL',
     'statut': 'TEXT',
+    'lieu': 'TEXT',
+    'participants': 'INTEGER',
+    'description': 'TEXT',
+    'formateur': 'TEXT',
+    'mode': 'TEXT',
+    'objectifs': 'TEXT',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },
@@ -586,10 +680,23 @@ final Map<String, Map<String, String>> _schema = {
   'recrutements': {
     'id': 'TEXT PRIMARY KEY',
     'poste_id': 'TEXT',
+    'poste_nom': 'TEXT',
     'candidat_nom': 'TEXT',
+    'candidat_email': 'TEXT',
+    'candidat_telephone': 'TEXT',
+    'localisation': 'TEXT',
+    'experience': 'TEXT',
+    'salaire_souhaite': 'TEXT',
+    'disponibilite': 'TEXT',
+    'entretien_date': 'INTEGER',
+    'entretien_lieu': 'TEXT',
     'statut': 'TEXT',
+    'stage': 'TEXT',
+    'type_contrat': 'TEXT',
     'source': 'TEXT',
     'score': 'INTEGER',
+    'commentaire': 'TEXT',
+    'cv_url': 'TEXT',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },
@@ -680,9 +787,16 @@ final Map<String, Map<String, String>> _schema = {
   'entretiens_individuels': {
     'id': 'TEXT PRIMARY KEY',
     'employe_id': 'TEXT',
+    'employe_nom': 'TEXT',
+    'poste': 'TEXT',
+    'manager': 'TEXT',
     'date': 'INTEGER',
     'statut': 'TEXT',
+    'type': 'TEXT',
+    'lieu': 'TEXT',
+    'objectifs': 'TEXT',
     'notes': 'TEXT',
+    'actions': 'TEXT',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },

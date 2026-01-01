@@ -24,8 +24,41 @@ class _PostesFormScreenState extends State<PostesFormScreen> {
   late final TextEditingController _departmentCtrl;
   late final TextEditingController _levelCtrl;
   late final TextEditingController _descriptionCtrl;
+  late final TextEditingController _typeContratCtrl;
+  late final TextEditingController _localisationCtrl;
+  late final TextEditingController _salaireRangeCtrl;
+  late final TextEditingController _missionsCtrl;
+  late final TextEditingController _responsabilitesCtrl;
+  late final TextEditingController _liensHierarchiquesCtrl;
+  late final TextEditingController _formationCtrl;
+  late final TextEditingController _experienceCtrl;
+  late final TextEditingController _competencesTechCtrl;
+  late final TextEditingController _competencesComportCtrl;
+  late final TextEditingController _languesCtrl;
+  late final TextEditingController _dureeCddCtrl;
+  late final TextEditingController _avantagesCtrl;
+  late final TextEditingController _datePrisePosteCtrl;
+  late final TextEditingController _sitesEmploiCtrl;
+  late final TextEditingController _reseauxSociauxCtrl;
+  late final TextEditingController _cooptationInterneCtrl;
+  late final TextEditingController _cabinetsCtrl;
   String _status = 'Brouillon';
   String? _errorMessage;
+
+  Future<void> _pickDate(TextEditingController controller) async {
+    final initial = DateTime.tryParse(controller.text.trim()) ?? DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+    final year = picked.year.toString().padLeft(4, '0');
+    final month = picked.month.toString().padLeft(2, '0');
+    final day = picked.day.toString().padLeft(2, '0');
+    controller.text = '$year-$month-$day';
+  }
 
   @override
   void initState() {
@@ -35,6 +68,24 @@ class _PostesFormScreenState extends State<PostesFormScreen> {
     _departmentCtrl = TextEditingController(text: widget.poste?.departmentId ?? '');
     _levelCtrl = TextEditingController(text: widget.poste?.level ?? '');
     _descriptionCtrl = TextEditingController(text: widget.poste?.description ?? '');
+    _typeContratCtrl = TextEditingController(text: widget.poste?.typeContrat ?? '');
+    _localisationCtrl = TextEditingController(text: widget.poste?.localisation ?? '');
+    _salaireRangeCtrl = TextEditingController(text: widget.poste?.salaireRange ?? '');
+    _missionsCtrl = TextEditingController(text: widget.poste?.missions ?? '');
+    _responsabilitesCtrl = TextEditingController(text: widget.poste?.responsabilites ?? '');
+    _liensHierarchiquesCtrl = TextEditingController(text: widget.poste?.liensHierarchiques ?? '');
+    _formationCtrl = TextEditingController(text: widget.poste?.formation ?? '');
+    _experienceCtrl = TextEditingController(text: widget.poste?.experience ?? '');
+    _competencesTechCtrl = TextEditingController(text: widget.poste?.competencesTech ?? '');
+    _competencesComportCtrl = TextEditingController(text: widget.poste?.competencesComport ?? '');
+    _languesCtrl = TextEditingController(text: widget.poste?.langues ?? '');
+    _dureeCddCtrl = TextEditingController(text: widget.poste?.dureeCdd ?? '');
+    _avantagesCtrl = TextEditingController(text: widget.poste?.avantages ?? '');
+    _datePrisePosteCtrl = TextEditingController(text: widget.poste?.datePrisePoste ?? '');
+    _sitesEmploiCtrl = TextEditingController(text: widget.poste?.sitesEmploi ?? '');
+    _reseauxSociauxCtrl = TextEditingController(text: widget.poste?.reseauxSociaux ?? '');
+    _cooptationInterneCtrl = TextEditingController(text: widget.poste?.cooptationInterne ?? '');
+    _cabinetsCtrl = TextEditingController(text: widget.poste?.cabinets ?? '');
     _status = widget.poste?.status ?? 'Brouillon';
   }
 
@@ -45,6 +96,24 @@ class _PostesFormScreenState extends State<PostesFormScreen> {
     _departmentCtrl.dispose();
     _levelCtrl.dispose();
     _descriptionCtrl.dispose();
+    _typeContratCtrl.dispose();
+    _localisationCtrl.dispose();
+    _salaireRangeCtrl.dispose();
+    _missionsCtrl.dispose();
+    _responsabilitesCtrl.dispose();
+    _liensHierarchiquesCtrl.dispose();
+    _formationCtrl.dispose();
+    _experienceCtrl.dispose();
+    _competencesTechCtrl.dispose();
+    _competencesComportCtrl.dispose();
+    _languesCtrl.dispose();
+    _dureeCddCtrl.dispose();
+    _avantagesCtrl.dispose();
+    _datePrisePosteCtrl.dispose();
+    _sitesEmploiCtrl.dispose();
+    _reseauxSociauxCtrl.dispose();
+    _cooptationInterneCtrl.dispose();
+    _cabinetsCtrl.dispose();
     super.dispose();
   }
 
@@ -91,6 +160,24 @@ class _PostesFormScreenState extends State<PostesFormScreen> {
         level: _levelCtrl.text.trim(),
         description: _descriptionCtrl.text.trim(),
         code: _codeCtrl.text.trim(),
+        typeContrat: _typeContratCtrl.text.trim(),
+        localisation: _localisationCtrl.text.trim(),
+        salaireRange: _salaireRangeCtrl.text.trim(),
+        missions: _missionsCtrl.text.trim(),
+        responsabilites: _responsabilitesCtrl.text.trim(),
+        liensHierarchiques: _liensHierarchiquesCtrl.text.trim(),
+        formation: _formationCtrl.text.trim(),
+        experience: _experienceCtrl.text.trim(),
+        competencesTech: _competencesTechCtrl.text.trim(),
+        competencesComport: _competencesComportCtrl.text.trim(),
+        langues: _languesCtrl.text.trim(),
+        dureeCdd: _dureeCddCtrl.text.trim(),
+        avantages: _avantagesCtrl.text.trim(),
+        datePrisePoste: _datePrisePosteCtrl.text.trim(),
+        sitesEmploi: _sitesEmploiCtrl.text.trim(),
+        reseauxSociaux: _reseauxSociauxCtrl.text.trim(),
+        cooptationInterne: _cooptationInterneCtrl.text.trim(),
+        cabinets: _cabinetsCtrl.text.trim(),
         status: _status,
         deletedAt: widget.poste?.deletedAt,
       ),
@@ -129,13 +216,73 @@ class _PostesFormScreenState extends State<PostesFormScreen> {
                     options: widget.departmentOptions,
                   ),
                   _FormField(controller: _levelCtrl, label: 'Niveau'),
-                  _FormField(controller: _descriptionCtrl, label: 'Description'),
+                  _FormField(controller: _descriptionCtrl, label: 'Description', maxLines: 3),
                   _FormDropdown(
                     label: 'Statut',
                     value: _status,
                     items: const ['Brouillon', 'Actif', 'Archive'],
                     onChanged: (value) => setState(() => _status = value),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            AppCard(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _FormField(controller: _missionsCtrl, label: 'Missions principales', maxLines: 3),
+                  _FormField(controller: _responsabilitesCtrl, label: 'Responsabilites', maxLines: 3),
+                  _FormField(controller: _liensHierarchiquesCtrl, label: 'Liens hierarchiques', maxLines: 2),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            AppCard(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _FormField(controller: _formationCtrl, label: 'Formation'),
+                  _FormField(controller: _experienceCtrl, label: 'Experience'),
+                  _FormField(controller: _competencesTechCtrl, label: 'Competences techniques', maxLines: 2),
+                  _FormField(controller: _competencesComportCtrl, label: 'Competences comportementales', maxLines: 2),
+                  _FormField(controller: _languesCtrl, label: 'Langues', maxLines: 2),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            AppCard(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _FormField(controller: _typeContratCtrl, label: 'Type contrat'),
+                  _FormField(controller: _dureeCddCtrl, label: 'Duree CDD'),
+                  _FormField(controller: _salaireRangeCtrl, label: 'Fourchette salariale'),
+                  _FormField(controller: _avantagesCtrl, label: 'Avantages', maxLines: 2),
+                  _FormField(
+                    controller: _datePrisePosteCtrl,
+                    label: 'Date prise de poste',
+                    readOnly: true,
+                    onTap: () => _pickDate(_datePrisePosteCtrl),
+                    suffixIcon: const Icon(Icons.date_range),
+                  ),
+                  _FormField(controller: _localisationCtrl, label: 'Localisation'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            AppCard(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _FormField(controller: _sitesEmploiCtrl, label: 'Sites emploi', maxLines: 2),
+                  _FormField(controller: _reseauxSociauxCtrl, label: 'Reseaux sociaux', maxLines: 2),
+                  _FormField(controller: _cooptationInterneCtrl, label: 'Cooptation interne', maxLines: 2),
+                  _FormField(controller: _cabinetsCtrl, label: 'Cabinets', maxLines: 2),
                 ],
               ),
             ),
@@ -167,10 +314,21 @@ class _PostesFormScreenState extends State<PostesFormScreen> {
 }
 
 class _FormField extends StatelessWidget {
-  const _FormField({required this.controller, required this.label});
+  const _FormField({
+    required this.controller,
+    required this.label,
+    this.readOnly = false,
+    this.onTap,
+    this.suffixIcon,
+    this.maxLines = 1,
+  });
 
   final TextEditingController controller;
   final String label;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final Widget? suffixIcon;
+  final int maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -178,7 +336,10 @@ class _FormField extends StatelessWidget {
       width: 240,
       child: TextField(
         controller: controller,
-        decoration: InputDecoration(labelText: label),
+        readOnly: readOnly,
+        onTap: onTap,
+        maxLines: maxLines,
+        decoration: InputDecoration(labelText: label, suffixIcon: suffixIcon),
       ),
     );
   }
