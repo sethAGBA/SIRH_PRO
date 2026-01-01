@@ -17,6 +17,7 @@ import '../../notes_frais/presentation/notes_frais_screen.dart';
 import '../../paie_remuneration/presentation/paie_remuneration_screen.dart';
 import '../../presences/presentation/presences_screen.dart';
 import '../../parametres/presentation/parametres_screen.dart';
+import '../../postes/presentation/postes_screen.dart';
 import '../../recrutements/presentation/recrutements_screen.dart';
 import '../../reporting/presentation/reporting_screen.dart';
 import '../../sante_travail/presentation/sante_travail_screen.dart';
@@ -38,6 +39,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const AppSidebarItem(label: 'Tableau de bord', icon: Icons.dashboard),
     const AppSidebarItem(label: 'Employes', icon: Icons.people),
     const AppSidebarItem(label: 'Departements', icon: Icons.apartment),
+    const AppSidebarItem(label: 'Postes', icon: Icons.badge_outlined),
     const AppSidebarItem(label: 'Presences', icon: Icons.schedule),
     const AppSidebarItem(label: 'Conges & absences', icon: Icons.beach_access),
     const AppSidebarItem(label: 'Recrutements', icon: Icons.work_outline),
@@ -56,6 +58,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _DashboardHome(),
     EmployesScreen(),
     DepartementsScreen(),
+    PostesScreen(),
     PresencesScreen(),
     CongesAbsencesScreen(),
     RecrutementsScreen(),

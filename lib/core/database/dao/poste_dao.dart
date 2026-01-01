@@ -8,6 +8,24 @@ class PosteDao {
 
   final SQLiteService _sqlite;
 
+  Future<bool> existsByCode(String code, {String? excludeId}) async {
+    final db = await _sqlite.db;
+    final parts = <String>['code = ?'];
+    final args = <Object?>[code];
+    if (excludeId != null && excludeId.isNotEmpty) {
+      parts.add('id != ?');
+      args.add(excludeId);
+    }
+    final rows = await db.query(
+      DbTables.postes,
+      where: parts.join(' AND '),
+      whereArgs: args,
+      columns: const ['id'],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
   Future<int> insert(Map<String, dynamic> data) async {
     final db = await _sqlite.db;
     return db.insert(DbTables.postes, data, conflictAlgorithm: ConflictAlgorithm.replace);

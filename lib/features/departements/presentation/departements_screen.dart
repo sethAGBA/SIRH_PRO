@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/database/dao/dao_registry.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../shared/models/departement.dart';
 import '../../../shared/models/org_node.dart';
+import 'department_form_screen.dart';
 import 'department_detail_screen.dart';
 
 class DepartementsScreen extends StatefulWidget {
@@ -16,52 +18,182 @@ class DepartementsScreen extends StatefulWidget {
 }
 
 class _DepartementsScreenState extends State<DepartementsScreen> {
-  final List<Departement> _departements = [
-    const Departement(
-      id: 'dep-1',
-      name: 'Marketing',
-      manager: 'A. Diallo',
-      headcount: 32,
-      budget: 'FCFA 420k',
-      pole: 'Commercial',
-      size: 'Moyen',
-      location: 'Lome',
-    ),
-    const Departement(
-      id: 'dep-2',
-      name: 'Finance',
-      manager: 'Y. Leclerc',
-      headcount: 18,
-      budget: 'FCFA 310k',
-      pole: 'Support',
-      size: 'Petit',
-      location: 'Lome',
-    ),
-    const Departement(
-      id: 'dep-3',
-      name: 'IT',
-      manager: 'S. Mensah',
-      headcount: 24,
-      budget: 'FCFA 510k',
-      pole: 'Operations',
-      size: 'Moyen',
-      location: 'Kara',
-    ),
-  ];
+  final List<Departement> _departements = [];
+  bool _loading = true;
+  List<String> _poleOptions = [];
+  List<String> _sizeOptions = [];
+  List<String> _locationOptions = [];
 
   String _filterPole = 'Tous';
   String _filterSize = 'Tous';
   String _filterLocation = 'Tous';
+  String _filterStatus = 'Actif';
   String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDepartments();
+  }
+
+  Future<void> _loadDepartments() async {
+    setState(() => _loading = true);
+    final rows = await DaoRegistry.instance.departements.list(orderBy: 'nom ASC');
+    final departments = rows.map(_departmentFromRow).toList();
+    if (!mounted) return;
+    setState(() {
+      _departements
+        ..clear()
+        ..addAll(departments);
+      _refreshFilterOptions();
+      _loading = false;
+    });
+  }
+
+  void _refreshFilterOptions() {
+    _poleOptions = _departements.map((d) => d.pole).where((v) => v.trim().isNotEmpty).toSet().toList()
+      ..sort();
+    _sizeOptions = _departements.map((d) => d.size).where((v) => v.trim().isNotEmpty).toSet().toList()
+      ..sort();
+    _locationOptions = _departements.map((d) => d.location).where((v) => v.trim().isNotEmpty).toSet().toList()
+      ..sort();
+
+    if (_filterPole != 'Tous' && !_poleOptions.contains(_filterPole)) {
+      _filterPole = 'Tous';
+    }
+    if (_filterSize != 'Tous' && !_sizeOptions.contains(_filterSize)) {
+      _filterSize = 'Tous';
+    }
+    if (_filterLocation != 'Tous' && !_locationOptions.contains(_filterLocation)) {
+      _filterLocation = 'Tous';
+    }
+  }
+
+  Departement _departmentFromRow(Map<String, dynamic> row) {
+    final budgetDisplay = (row['budget_affiche'] as String?)?.trim() ?? '';
+    final budgetValue = row['budget_masse_salariale'];
+    return Departement(
+      id: (row['id'] as String?) ?? '',
+      name: (row['nom'] as String?) ?? '',
+      manager: (row['manager_nom'] as String?) ?? '',
+      managerId: (row['manager_id'] as String?) ?? '',
+      headcount: (row['effectif'] as int?) ?? 0,
+      budget: budgetDisplay.isNotEmpty ? budgetDisplay : _formatBudgetValue(budgetValue),
+      pole: (row['pole'] as String?) ?? '',
+      size: (row['taille'] as String?) ?? '',
+      location: (row['localisation'] as String?) ?? '',
+      code: (row['code'] as String?) ?? '',
+      description: (row['description'] as String?) ?? '',
+      email: (row['email'] as String?) ?? '',
+      phone: (row['telephone'] as String?) ?? '',
+      extension: (row['extension'] as String?) ?? '',
+      adresse: (row['adresse'] as String?) ?? '',
+      parentDepartement: (row['parent_departement_nom'] as String?) ??
+          (row['parent_departement'] as String?) ??
+          '',
+      parentDepartementId: (row['parent_departement_id'] as String?) ?? '',
+      dateCreation: (row['date_creation'] as String?) ?? '',
+      notes: (row['notes'] as String?) ?? '',
+      responsables: (row['responsables'] as String?) ?? '',
+      cadresCount: (row['cadres_count'] as String?) ?? '',
+      techniciensCount: (row['techniciens_count'] as String?) ?? '',
+      supportCount: (row['support_count'] as String?) ?? '',
+      variationAnnuelle: (row['variation_annuelle'] as String?) ?? '',
+      tauxAbsenteisme: (row['taux_absenteisme'] as String?) ?? '',
+      productiviteMoyenne: (row['productivite_moyenne'] as String?) ?? '',
+      satisfactionEquipe: (row['satisfaction_equipe'] as String?) ?? '',
+      turnoverDepartement: (row['turnover_departement'] as String?) ?? '',
+      budgetVsRealise: (row['budget_vs_realise'] as String?) ?? '',
+      salairesTotaux: (row['salaires_totaux'] as String?) ?? '',
+      primesVariables: (row['primes_variables'] as String?) ?? '',
+      chargesSociales: (row['charges_sociales'] as String?) ?? '',
+      coutMoyenEmploye: (row['cout_moyen_employe'] as String?) ?? '',
+      objectifPrincipal: (row['objectif_principal'] as String?) ?? '',
+      indicateurObjectif: (row['indicateur_objectif'] as String?) ?? '',
+      projetEnCours: (row['projet_en_cours'] as String?) ?? '',
+      ressourcesNecessaires: (row['ressources_necessaires'] as String?) ?? '',
+      status: (row['statut'] as String?) ?? 'Actif',
+      deletedAt: row['deleted_at'] as int?,
+    );
+  }
+
+  Map<String, dynamic> _departmentToRow(Departement departement, {required bool forInsert}) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final parsedBudget = _parseBudgetValue(departement.budget);
+    final data = <String, dynamic>{
+      'nom': departement.name,
+      'manager_id': departement.managerId,
+      'manager_nom': departement.manager,
+      'effectif': departement.headcount,
+      'budget_masse_salariale': parsedBudget,
+      'budget_affiche': departement.budget,
+      'pole': departement.pole,
+      'taille': departement.size,
+      'localisation': departement.location,
+      'code': departement.code,
+      'description': departement.description,
+      'email': departement.email,
+      'telephone': departement.phone,
+      'extension': departement.extension,
+      'adresse': departement.adresse,
+      'parent_departement': departement.parentDepartement,
+      'parent_departement_id': departement.parentDepartementId,
+      'parent_departement_nom': departement.parentDepartement,
+      'date_creation': departement.dateCreation,
+      'notes': departement.notes,
+      'responsables': departement.responsables,
+      'cadres_count': departement.cadresCount,
+      'techniciens_count': departement.techniciensCount,
+      'support_count': departement.supportCount,
+      'variation_annuelle': departement.variationAnnuelle,
+      'taux_absenteisme': departement.tauxAbsenteisme,
+      'productivite_moyenne': departement.productiviteMoyenne,
+      'satisfaction_equipe': departement.satisfactionEquipe,
+      'turnover_departement': departement.turnoverDepartement,
+      'budget_vs_realise': departement.budgetVsRealise,
+      'salaires_totaux': departement.salairesTotaux,
+      'primes_variables': departement.primesVariables,
+      'charges_sociales': departement.chargesSociales,
+      'cout_moyen_employe': departement.coutMoyenEmploye,
+      'objectif_principal': departement.objectifPrincipal,
+      'indicateur_objectif': departement.indicateurObjectif,
+      'projet_en_cours': departement.projetEnCours,
+      'ressources_necessaires': departement.ressourcesNecessaires,
+      'statut': departement.status,
+      'deleted_at': departement.deletedAt,
+      'updated_at': now,
+    };
+
+    if (forInsert) {
+      data['id'] = departement.id;
+      data['created_at'] = now;
+    }
+
+    return data;
+  }
+
+  double? _parseBudgetValue(String input) {
+    final normalized = input.replaceAll(RegExp(r'[^0-9.,]'), '').replaceAll(',', '.');
+    if (normalized.isEmpty) return null;
+    return double.tryParse(normalized);
+  }
+
+  String _formatBudgetValue(Object? value) {
+    if (value == null) return '';
+    if (value is num) return value.toString();
+    return value.toString();
+  }
 
   List<Departement> get _filteredDepartments {
     return _departements.where((dep) {
       final matchPole = _filterPole == 'Tous' || dep.pole == _filterPole;
       final matchSize = _filterSize == 'Tous' || dep.size == _filterSize;
       final matchLocation = _filterLocation == 'Tous' || dep.location == _filterLocation;
+      final status = dep.deletedAt != null ? 'Archive' : dep.status;
+      final matchStatus = _filterStatus == 'Tous' || status == _filterStatus;
       final matchSearch =
           _searchQuery.isEmpty || dep.name.toLowerCase().contains(_searchQuery.toLowerCase());
-      return matchPole && matchSize && matchLocation && matchSearch;
+      return matchPole && matchSize && matchLocation && matchStatus && matchSearch;
     }).toList();
   }
 
@@ -79,14 +211,66 @@ class _DepartementsScreenState extends State<DepartementsScreen> {
   }
 
   void _showAssignManager(Departement departement) {
-    final managerCtrl = TextEditingController(text: departement.manager);
+    final managerCtrl = TextEditingController(text: departement.managerId);
+    final managerNameCtrl = TextEditingController(text: departement.manager);
+    final futureOptions = DaoRegistry.instance.employes.list(orderBy: 'nom_complet ASC');
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Affecter manager'),
-        content: TextField(
-          controller: managerCtrl,
-          decoration: const InputDecoration(labelText: 'Manager'),
+        content: FutureBuilder<List<Map<String, dynamic>>>(
+          future: futureOptions,
+          builder: (context, snapshot) {
+            final rows = snapshot.data ?? [];
+            final options = rows
+                .map(
+                  (row) => _ManagerOption(
+                    id: (row['id'] as String?) ?? '',
+                    label: (row['nom_complet'] as String?) ?? '',
+                  ),
+                )
+                .where((opt) => opt.id.isNotEmpty && opt.label.trim().isNotEmpty)
+                .toList()
+              ..sort((a, b) => a.label.compareTo(b.label));
+
+            if (options.isEmpty) {
+              return TextField(
+                controller: managerNameCtrl,
+                decoration: const InputDecoration(labelText: 'Manager'),
+              );
+            }
+
+            final normalized = options.any((opt) => opt.id == managerCtrl.text) || managerCtrl.text.isEmpty
+                ? options
+                : [_ManagerOption(id: managerCtrl.text, label: managerCtrl.text), ...options];
+            final value = managerCtrl.text.isEmpty ? normalized.first.id : managerCtrl.text;
+            if (managerCtrl.text.isEmpty) {
+              managerCtrl.text = value;
+            }
+            final selected = normalized.firstWhere((opt) => opt.id == managerCtrl.text, orElse: () => normalized.first);
+            managerNameCtrl.text = selected.label;
+
+            return DropdownButtonFormField<String>(
+              value: value,
+              decoration: const InputDecoration(labelText: 'Manager'),
+              items: normalized
+                  .map(
+                    (opt) => DropdownMenuItem(
+                      value: opt.id,
+                      child: Text(opt.label),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (selectedId) {
+                managerCtrl.text = selectedId ?? '';
+                final match = normalized.firstWhere(
+                  (opt) => opt.id == managerCtrl.text,
+                  orElse: () => _ManagerOption(id: '', label: ''),
+                );
+                managerNameCtrl.text = match.label;
+              },
+            );
+          },
         ),
         actions: [
           TextButton(
@@ -95,55 +279,211 @@ class _DepartementsScreenState extends State<DepartementsScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              final index = _departements.indexWhere((d) => d.id == departement.id);
-              if (index != -1) {
-                setState(() {
-                  _departements[index] = Departement(
-                    id: departement.id,
-                    name: departement.name,
-                    manager: managerCtrl.text.trim(),
-                    headcount: departement.headcount,
-                    budget: departement.budget,
-                    pole: departement.pole,
-                    size: departement.size,
-                    location: departement.location,
-                  );
-                });
-              }
-              showOperationNotice(context, message: 'Manager mis a jour.', success: true);
-              Navigator.of(context).pop();
+              final updated = Departement(
+                id: departement.id,
+                name: departement.name,
+                manager: managerNameCtrl.text.trim(),
+                managerId: managerCtrl.text.trim(),
+                headcount: departement.headcount,
+                budget: departement.budget,
+                pole: departement.pole,
+                size: departement.size,
+                location: departement.location,
+                code: departement.code,
+                description: departement.description,
+                email: departement.email,
+                phone: departement.phone,
+                extension: departement.extension,
+                adresse: departement.adresse,
+                parentDepartement: departement.parentDepartement,
+                parentDepartementId: departement.parentDepartementId,
+                dateCreation: departement.dateCreation,
+                notes: departement.notes,
+                responsables: departement.responsables,
+                cadresCount: departement.cadresCount,
+                techniciensCount: departement.techniciensCount,
+                supportCount: departement.supportCount,
+                variationAnnuelle: departement.variationAnnuelle,
+                tauxAbsenteisme: departement.tauxAbsenteisme,
+                productiviteMoyenne: departement.productiviteMoyenne,
+                satisfactionEquipe: departement.satisfactionEquipe,
+                turnoverDepartement: departement.turnoverDepartement,
+                budgetVsRealise: departement.budgetVsRealise,
+                salairesTotaux: departement.salairesTotaux,
+                primesVariables: departement.primesVariables,
+                chargesSociales: departement.chargesSociales,
+                coutMoyenEmploye: departement.coutMoyenEmploye,
+                objectifPrincipal: departement.objectifPrincipal,
+                indicateurObjectif: departement.indicateurObjectif,
+                projetEnCours: departement.projetEnCours,
+                ressourcesNecessaires: departement.ressourcesNecessaires,
+                status: departement.status,
+                deletedAt: departement.deletedAt,
+              );
+              DaoRegistry.instance.departements
+                  .update(departement.id, _departmentToRow(updated, forInsert: false))
+                  .then((_) => _loadDepartments())
+                  .then((_) {
+                showOperationNotice(context, message: 'Manager mis a jour.', success: true);
+                Navigator.of(context).pop();
+              });
             },
             child: const Text('Enregistrer'),
           ),
         ],
       ),
-    ).then((_) => managerCtrl.dispose());
+    ).then((_) {
+      managerCtrl.dispose();
+      managerNameCtrl.dispose();
+    });
   }
 
   void _showEditStructure(Departement departement) {
     _openDepartmentForm(departement: departement);
   }
 
+  Future<void> _confirmDeleteDepartment(Departement departement) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer departement'),
+        content: Text('Supprimer ${departement.name} ? Cette action est reversible.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+    final updated = Departement(
+      id: departement.id,
+      name: departement.name,
+      manager: departement.manager,
+      managerId: departement.managerId,
+      headcount: departement.headcount,
+      budget: departement.budget,
+      pole: departement.pole,
+      size: departement.size,
+      location: departement.location,
+      code: departement.code,
+      description: departement.description,
+      email: departement.email,
+      phone: departement.phone,
+      extension: departement.extension,
+      adresse: departement.adresse,
+      parentDepartement: departement.parentDepartement,
+      parentDepartementId: departement.parentDepartementId,
+      dateCreation: departement.dateCreation,
+      notes: departement.notes,
+      responsables: departement.responsables,
+      cadresCount: departement.cadresCount,
+      techniciensCount: departement.techniciensCount,
+      supportCount: departement.supportCount,
+      variationAnnuelle: departement.variationAnnuelle,
+      tauxAbsenteisme: departement.tauxAbsenteisme,
+      productiviteMoyenne: departement.productiviteMoyenne,
+      satisfactionEquipe: departement.satisfactionEquipe,
+      turnoverDepartement: departement.turnoverDepartement,
+      budgetVsRealise: departement.budgetVsRealise,
+      salairesTotaux: departement.salairesTotaux,
+      primesVariables: departement.primesVariables,
+      chargesSociales: departement.chargesSociales,
+      coutMoyenEmploye: departement.coutMoyenEmploye,
+      objectifPrincipal: departement.objectifPrincipal,
+      indicateurObjectif: departement.indicateurObjectif,
+      projetEnCours: departement.projetEnCours,
+      ressourcesNecessaires: departement.ressourcesNecessaires,
+      status: 'Archive',
+      deletedAt: DateTime.now().millisecondsSinceEpoch,
+    );
+    await DaoRegistry.instance.departements.update(
+      departement.id,
+      _departmentToRow(updated, forInsert: false),
+    );
+    await _loadDepartments();
+    showOperationNotice(context, message: 'Departement archive.', success: true);
+  }
+
+  Future<void> _restoreDepartment(Departement departement) async {
+    final updated = Departement(
+      id: departement.id,
+      name: departement.name,
+      manager: departement.manager,
+      managerId: departement.managerId,
+      headcount: departement.headcount,
+      budget: departement.budget,
+      pole: departement.pole,
+      size: departement.size,
+      location: departement.location,
+      code: departement.code,
+      description: departement.description,
+      email: departement.email,
+      phone: departement.phone,
+      extension: departement.extension,
+      adresse: departement.adresse,
+      parentDepartement: departement.parentDepartement,
+      parentDepartementId: departement.parentDepartementId,
+      dateCreation: departement.dateCreation,
+      notes: departement.notes,
+      responsables: departement.responsables,
+      cadresCount: departement.cadresCount,
+      techniciensCount: departement.techniciensCount,
+      supportCount: departement.supportCount,
+      variationAnnuelle: departement.variationAnnuelle,
+      tauxAbsenteisme: departement.tauxAbsenteisme,
+      productiviteMoyenne: departement.productiviteMoyenne,
+      satisfactionEquipe: departement.satisfactionEquipe,
+      turnoverDepartement: departement.turnoverDepartement,
+      budgetVsRealise: departement.budgetVsRealise,
+      salairesTotaux: departement.salairesTotaux,
+      primesVariables: departement.primesVariables,
+      chargesSociales: departement.chargesSociales,
+      coutMoyenEmploye: departement.coutMoyenEmploye,
+      objectifPrincipal: departement.objectifPrincipal,
+      indicateurObjectif: departement.indicateurObjectif,
+      projetEnCours: departement.projetEnCours,
+      ressourcesNecessaires: departement.ressourcesNecessaires,
+      status: 'Actif',
+      deletedAt: null,
+    );
+    await DaoRegistry.instance.departements.update(
+      departement.id,
+      _departmentToRow(updated, forInsert: false),
+    );
+    await _loadDepartments();
+    showOperationNotice(context, message: 'Departement restaure.', success: true);
+  }
+
   Future<void> _openDepartmentForm({Departement? departement}) async {
     final created = await showDialog<Departement>(
       context: context,
       builder: (_) => Dialog.fullscreen(
-        child: _DepartmentFormScreen(departement: departement),
+        child: DepartmentFormScreen(departement: departement),
       ),
     );
 
     if (created == null) return;
-
-    setState(() {
-      final index = _departements.indexWhere((d) => d.id == created.id);
-      if (index == -1) {
-        _departements.add(created);
-        showOperationNotice(context, message: 'Departement cree.', success: true);
+    final exists = _departements.any((d) => d.id == created.id);
+    if (exists) {
+      await DaoRegistry.instance.departements.update(created.id, _departmentToRow(created, forInsert: false));
+      showOperationNotice(context, message: 'Departement mis a jour.', success: true);
+    } else {
+      await DaoRegistry.instance.departements.insert(_departmentToRow(created, forInsert: true));
+      if (created.status == 'Brouillon') {
+        showOperationNotice(context, message: 'Departement cree en brouillon (masque par defaut).', success: true);
       } else {
-        _departements[index] = created;
-        showOperationNotice(context, message: 'Departement mis a jour.', success: true);
+        showOperationNotice(context, message: 'Departement cree.', success: true);
       }
-    });
+    }
+    await _loadDepartments();
   }
 
   @override
@@ -155,10 +495,7 @@ class _DepartementsScreenState extends State<DepartementsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
-            title: 'Organisation',
-            subtitle: 'Suivi des departements et effectifs.',
-          ),
+          _buildHeader(context),
           const SizedBox(height: 16),
           AppCard(
             child: Column(
@@ -182,30 +519,26 @@ class _DepartementsScreenState extends State<DepartementsScreen> {
                     _FilterDropdown(
                       label: 'Pole',
                       value: _filterPole,
-                      items: const ['Tous', 'Commercial', 'Support', 'Operations'],
+                      items: ['Tous', ..._poleOptions],
                       onChanged: (value) => setState(() => _filterPole = value),
                     ),
                     _FilterDropdown(
                       label: 'Taille',
                       value: _filterSize,
-                      items: const ['Tous', 'Petit', 'Moyen', 'Grand'],
+                      items: ['Tous', ..._sizeOptions],
                       onChanged: (value) => setState(() => _filterSize = value),
                     ),
                     _FilterDropdown(
                       label: 'Localisation',
                       value: _filterLocation,
-                      items: const ['Tous', 'Lome', 'Kara', 'Sokode'],
+                      items: ['Tous', ..._locationOptions],
                       onChanged: (value) => setState(() => _filterLocation = value),
                     ),
-                    const Spacer(),
-                    ElevatedButton.icon(
-                      onPressed: _showCreateDepartment,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Creer departement'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                      ),
+                    _FilterDropdown(
+                      label: 'Statut',
+                      value: _filterStatus,
+                      items: const ['Tous', 'Actif', 'Brouillon', 'Archive'],
+                      onChanged: (value) => setState(() => _filterStatus = value),
                     ),
                   ],
                 ),
@@ -213,20 +546,38 @@ class _DepartementsScreenState extends State<DepartementsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 16,
-            runSpacing: 16,
-            children: _filteredDepartments
-                .map(
-                  (dep) => _DepartmentCard(
-                    departement: dep,
-                    onOpen: () => _openDepartment(dep),
-                    onEditStructure: () => _showEditStructure(dep),
-                    onAssignManager: () => _showAssignManager(dep),
-                  ),
-                )
-                .toList(),
-          ),
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_filteredDepartments.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'Aucun departement. Utilisez "Creer departement" pour commencer.',
+                  style: TextStyle(color: mutedText),
+                ),
+              ),
+            )
+          else
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: _filteredDepartments
+                  .map(
+                    (dep) => _DepartmentCard(
+                      departement: dep,
+                      onOpen: () => _openDepartment(dep),
+                      onEditStructure: () => _showEditStructure(dep),
+                      onAssignManager: () => _showAssignManager(dep),
+                      onDelete: () => _confirmDeleteDepartment(dep),
+                      onRestore: () => _restoreDepartment(dep),
+                    ),
+                  )
+                  .toList(),
+            ),
           const SizedBox(height: 24),
           AppCard(
             child: SizedBox(
@@ -278,6 +629,52 @@ class _DepartementsScreenState extends State<DepartementsScreen> {
       ),
     );
   }
+
+  Widget _buildHeader(BuildContext context) {
+    final actionButton = ElevatedButton.icon(
+      onPressed: _showCreateDepartment,
+      icon: const Icon(Icons.add),
+      label: const Text('Creer departement'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 900;
+        if (isWide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Expanded(
+                child: SectionHeader(
+                  title: 'Organisation',
+                  subtitle: 'Suivi des departements et effectifs.',
+                ),
+              ),
+              const SizedBox(width: 16),
+              actionButton,
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SectionHeader(
+              title: 'Organisation',
+              subtitle: 'Suivi des departements et effectifs.',
+            ),
+            const SizedBox(height: 12),
+            actionButton,
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _DepartmentCard extends StatelessWidget {
@@ -286,17 +683,24 @@ class _DepartmentCard extends StatelessWidget {
     required this.onOpen,
     required this.onEditStructure,
     required this.onAssignManager,
+    required this.onDelete,
+    required this.onRestore,
   });
 
   final Departement departement;
   final VoidCallback onOpen;
   final VoidCallback onEditStructure;
   final VoidCallback onAssignManager;
+  final VoidCallback onDelete;
+  final VoidCallback onRestore;
 
   @override
   Widget build(BuildContext context) {
     final primaryText = appTextPrimary(context);
     final mutedText = appTextMuted(context);
+    final badgeLabel = departement.deletedAt != null
+        ? 'Archive'
+        : (departement.status == 'Brouillon' ? 'Brouillon' : '');
 
     return AppCard(
       child: InkWell(
@@ -318,14 +722,37 @@ class _DepartmentCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (badgeLabel.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: badgeLabel == 'Archive' ? Colors.redAccent.withOpacity(0.12) : Colors.orangeAccent.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        badgeLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: badgeLabel == 'Archive' ? Colors.redAccent : Colors.orange.shade700,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
                   PopupMenuButton<String>(
                     onSelected: (value) {
                       if (value == 'edit') onEditStructure();
                       if (value == 'manager') onAssignManager();
+                      if (value == 'delete') onDelete();
+                      if (value == 'restore') onRestore();
                     },
-                    itemBuilder: (context) => const [
-                      PopupMenuItem(value: 'edit', child: Text('Modifier structure')),
-                      PopupMenuItem(value: 'manager', child: Text('Affecter manager')),
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(value: 'edit', child: Text('Modifier structure')),
+                      const PopupMenuItem(value: 'manager', child: Text('Affecter manager')),
+                      if (departement.deletedAt != null)
+                        const PopupMenuItem(value: 'restore', child: Text('Restaurer'))
+                      else
+                        const PopupMenuItem(value: 'delete', child: Text('Supprimer')),
                     ],
                   ),
                 ],
@@ -402,6 +829,13 @@ class _FilterDropdown extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ManagerOption {
+  const _ManagerOption({required this.id, required this.label});
+
+  final String id;
+  final String label;
 }
 
 class _OrgChartCanvas extends StatefulWidget {
@@ -598,265 +1032,5 @@ class _OrgLinesPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _OrgLinesPainter oldDelegate) {
     return oldDelegate.nodes != nodes;
-  }
-}
-
-class _DepartmentFormScreen extends StatefulWidget {
-  const _DepartmentFormScreen({this.departement});
-
-  final Departement? departement;
-
-  @override
-  State<_DepartmentFormScreen> createState() => _DepartmentFormScreenState();
-}
-
-class _DepartmentFormScreenState extends State<_DepartmentFormScreen> {
-  late final TextEditingController _nameCtrl;
-  late final TextEditingController _managerCtrl;
-  late final TextEditingController _headcountCtrl;
-  late final TextEditingController _budgetCtrl;
-  late final TextEditingController _poleCtrl;
-  late final TextEditingController _sizeCtrl;
-  late final TextEditingController _locationCtrl;
-
-  String? _errorMessage;
-  int _currentStep = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _nameCtrl = TextEditingController(text: widget.departement?.name ?? '');
-    _managerCtrl = TextEditingController(text: widget.departement?.manager ?? '');
-    _headcountCtrl = TextEditingController(
-      text: widget.departement != null ? widget.departement!.headcount.toString() : '',
-    );
-    _budgetCtrl = TextEditingController(text: widget.departement?.budget ?? '');
-    _poleCtrl = TextEditingController(text: widget.departement?.pole ?? '');
-    _sizeCtrl = TextEditingController(text: widget.departement?.size ?? '');
-    _locationCtrl = TextEditingController(text: widget.departement?.location ?? '');
-  }
-
-  @override
-  void dispose() {
-    _nameCtrl.dispose();
-    _managerCtrl.dispose();
-    _headcountCtrl.dispose();
-    _budgetCtrl.dispose();
-    _poleCtrl.dispose();
-    _sizeCtrl.dispose();
-    _locationCtrl.dispose();
-    super.dispose();
-  }
-
-  void _save() {
-    if (!_validateStep(0) || !_validateStep(1) || !_validateStep(2)) {
-      return;
-    }
-
-    final id = widget.departement?.id ?? 'dep-${DateTime.now().millisecondsSinceEpoch}';
-    final count = int.tryParse(_headcountCtrl.text.trim()) ?? 0;
-    Navigator.of(context).pop(
-      Departement(
-        id: id,
-        name: _nameCtrl.text.trim(),
-        manager: _managerCtrl.text.trim(),
-        headcount: count,
-        budget: _budgetCtrl.text.trim(),
-        pole: _poleCtrl.text.trim(),
-        size: _sizeCtrl.text.trim(),
-        location: _locationCtrl.text.trim(),
-      ),
-    );
-  }
-
-  bool _validateStep(int step) {
-    setState(() => _errorMessage = null);
-    if (step == 0) {
-      if (_nameCtrl.text.trim().isEmpty) {
-        _errorMessage = 'Le nom est requis.';
-        return false;
-      }
-      if (_managerCtrl.text.trim().isEmpty) {
-        _errorMessage = 'Le manager est requis.';
-        return false;
-      }
-      if (_poleCtrl.text.trim().isEmpty) {
-        _errorMessage = 'Le pole est requis.';
-        return false;
-      }
-      if (_sizeCtrl.text.trim().isEmpty) {
-        _errorMessage = 'La taille est requise.';
-        return false;
-      }
-      if (_locationCtrl.text.trim().isEmpty) {
-        _errorMessage = 'La localisation est requise.';
-        return false;
-      }
-    }
-    if (step == 1) {
-      final count = int.tryParse(_headcountCtrl.text.trim()) ?? 0;
-      if (count <= 0) {
-        _errorMessage = 'Effectif invalide.';
-        return false;
-      }
-      if (_budgetCtrl.text.trim().isEmpty) {
-        _errorMessage = 'Le budget est requis.';
-        return false;
-      }
-    }
-    return true;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isEditing = widget.departement != null;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Modifier departement' : 'Creer departement'),
-        automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.close),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-        child: Stepper(
-          currentStep: _currentStep,
-          controlsBuilder: (context, details) {
-            final isLast = _currentStep == 2;
-            return Row(
-              children: [
-                ElevatedButton(
-                  onPressed: details.onStepContinue,
-                  child: Text(isLast ? 'Enregistrer' : 'Continuer'),
-                ),
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: details.onStepCancel,
-                  child: const Text('Retour'),
-                ),
-                const Spacer(),
-                if (_errorMessage != null)
-                  Text(
-                    _errorMessage!,
-                    style: const TextStyle(color: Colors.redAccent),
-                  ),
-                const SizedBox(width: 8),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Annuler'),
-                ),
-              ],
-            );
-          },
-          onStepContinue: () {
-            if (!_validateStep(_currentStep)) return;
-            if (_currentStep < 2) {
-              setState(() => _currentStep += 1);
-            } else {
-              _save();
-            }
-          },
-          onStepCancel: () {
-            if (_currentStep > 0) {
-              setState(() => _currentStep -= 1);
-            } else {
-              Navigator.of(context).pop();
-            }
-          },
-          steps: [
-            Step(
-              title: const Text('Informations'),
-              isActive: _currentStep >= 0,
-              content: AppCard(
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _FormField(controller: _nameCtrl, label: 'Nom'),
-                    _FormField(controller: _managerCtrl, label: 'Manager'),
-                    _FormField(controller: _poleCtrl, label: 'Pole'),
-                    _FormField(controller: _sizeCtrl, label: 'Taille'),
-                    _FormField(controller: _locationCtrl, label: 'Localisation'),
-                  ],
-                ),
-              ),
-            ),
-            Step(
-              title: const Text('Effectifs & budget'),
-              isActive: _currentStep >= 1,
-              content: AppCard(
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _FormField(controller: _headcountCtrl, label: 'Effectif'),
-                    _FormField(controller: _budgetCtrl, label: 'Budget masse salariale'),
-                  ],
-                ),
-              ),
-            ),
-            Step(
-              title: const Text('Organisation'),
-              isActive: _currentStep >= 2,
-              content: AppCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Structure et rattachements',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: appTextPrimary(context),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Rattachements hierarchiques (N+1, N+2) et equipes.',
-                      style: TextStyle(color: appTextMuted(context)),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        _FormField(controller: _managerCtrl, label: 'Manager (N+1)'),
-                        _FormField(controller: _poleCtrl, label: 'Pole de rattachement'),
-                        _FormField(controller: _sizeCtrl, label: 'Niveau departement'),
-                        _FormField(controller: _locationCtrl, label: 'Site principal'),
-                        _FormField(controller: _nameCtrl, label: 'Departements lies (liste)'),
-                        _FormField(controller: _budgetCtrl, label: 'Ressources necessaires'),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FormField extends StatelessWidget {
-  const _FormField({required this.controller, required this.label});
-
-  final TextEditingController controller;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 220,
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(labelText: label),
-      ),
-    );
   }
 }

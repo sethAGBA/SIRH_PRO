@@ -8,7 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:convert';
 
 class SQLiteService {
-  static const int _schemaVersion = 2;
+  static const int _schemaVersion = 11;
   static final SQLiteService _instance = SQLiteService._internal();
   factory SQLiteService() => _instance;
   SQLiteService._internal();
@@ -95,11 +95,189 @@ class SQLiteService {
       if (version == 2) {
         await _migrateToV2(db);
       }
+      if (version == 3) {
+        await _migrateToV3(db);
+      }
+      if (version == 4) {
+        await _migrateToV4(db);
+      }
+      if (version == 5) {
+        await _migrateToV5(db);
+      }
+      if (version == 6) {
+        await _migrateToV6(db);
+      }
+      if (version == 7) {
+        await _migrateToV7(db);
+      }
+      if (version == 8) {
+        await _migrateToV8(db);
+      }
+      if (version == 9) {
+        await _migrateToV9(db);
+      }
+      if (version == 10) {
+        await _migrateToV10(db);
+      }
+      if (version == 11) {
+        await _migrateToV11(db);
+      }
     }
   }
 
   Future<void> _migrateToV2(Database db) async {
     final table = 'employes';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV3(Database db) async {
+    final table = 'departements';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV4(Database db) async {
+    final table = 'departements';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV5(Database db) async {
+    final table = 'departements';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV6(Database db) async {
+    final table = 'departements';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV7(Database db) async {
+    final table = 'departements';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV8(Database db) async {
+    final table = 'postes';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV9(Database db) async {
+    final deptRows = await db.query('departements', columns: ['id', 'nom']);
+    final posteRows = await db.query('postes', columns: ['id', 'intitule']);
+    final deptByName = <String, String>{};
+    for (final row in deptRows) {
+      final name = row['nom'] as String?;
+      final id = row['id'] as String?;
+      if (name != null && id != null && name.isNotEmpty) {
+        deptByName[name] = id;
+      }
+    }
+    final posteByName = <String, String>{};
+    for (final row in posteRows) {
+      final name = row['intitule'] as String?;
+      final id = row['id'] as String?;
+      if (name != null && id != null && name.isNotEmpty) {
+        posteByName[name] = id;
+      }
+    }
+
+    final employees = await db.query('employes', columns: ['id', 'departement_id', 'poste_id']);
+    for (final row in employees) {
+      final id = row['id'] as String?;
+      if (id == null || id.isEmpty) continue;
+      final currentDept = row['departement_id'] as String?;
+      final currentPoste = row['poste_id'] as String?;
+      final update = <String, Object?>{};
+      if (currentDept != null && deptByName.containsKey(currentDept)) {
+        update['departement_id'] = deptByName[currentDept];
+      }
+      if (currentPoste != null && posteByName.containsKey(currentPoste)) {
+        update['poste_id'] = posteByName[currentPoste];
+      }
+      if (update.isNotEmpty) {
+        await db.update('employes', update, where: 'id = ?', whereArgs: [id]);
+      }
+    }
+  }
+
+  Future<void> _migrateToV10(Database db) async {
+    final table = 'presences';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV11(Database db) async {
+    final table = 'conges_absences';
     final columns = _schema[table]!;
     final exists = await _tableExists(db, table);
     if (!exists) {
@@ -256,16 +434,57 @@ final Map<String, Map<String, String>> _schema = {
     'id': 'TEXT PRIMARY KEY',
     'nom': 'TEXT',
     'manager_id': 'TEXT',
+    'manager_nom': 'TEXT',
     'effectif': 'INTEGER',
     'budget_masse_salariale': 'REAL',
+    'budget_affiche': 'TEXT',
+    'pole': 'TEXT',
+    'taille': 'TEXT',
+    'localisation': 'TEXT',
+    'code': 'TEXT',
+    'description': 'TEXT',
+    'email': 'TEXT',
+    'telephone': 'TEXT',
+    'extension': 'TEXT',
+    'adresse': 'TEXT',
+    'parent_departement': 'TEXT',
+    'parent_departement_id': 'TEXT',
+    'parent_departement_nom': 'TEXT',
+    'date_creation': 'TEXT',
+    'notes': 'TEXT',
+    'responsables': 'TEXT',
+    'cadres_count': 'TEXT',
+    'techniciens_count': 'TEXT',
+    'support_count': 'TEXT',
+    'variation_annuelle': 'TEXT',
+    'taux_absenteisme': 'TEXT',
+    'productivite_moyenne': 'TEXT',
+    'satisfaction_equipe': 'TEXT',
+    'turnover_departement': 'TEXT',
+    'budget_vs_realise': 'TEXT',
+    'salaires_totaux': 'TEXT',
+    'primes_variables': 'TEXT',
+    'charges_sociales': 'TEXT',
+    'cout_moyen_employe': 'TEXT',
+    'objectif_principal': 'TEXT',
+    'indicateur_objectif': 'TEXT',
+    'projet_en_cours': 'TEXT',
+    'ressources_necessaires': 'TEXT',
+    'statut': 'TEXT',
+    'deleted_at': 'INTEGER',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },
   'postes': {
     'id': 'TEXT PRIMARY KEY',
+    'code': 'TEXT',
     'intitule': 'TEXT',
     'description': 'TEXT',
     'departement_id': 'TEXT',
+    'departement_nom': 'TEXT',
+    'niveau': 'TEXT',
+    'statut': 'TEXT',
+    'deleted_at': 'INTEGER',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },
@@ -283,21 +502,37 @@ final Map<String, Map<String, String>> _schema = {
   'presences': {
     'id': 'TEXT PRIMARY KEY',
     'employe_id': 'TEXT',
+    'employe_nom': 'TEXT',
     'date': 'INTEGER',
     'heure_arrivee': 'TEXT',
     'heure_depart': 'TEXT',
     'statut': 'TEXT',
+    'type': 'TEXT',
+    'source': 'TEXT',
+    'lieu': 'TEXT',
+    'justification': 'TEXT',
+    'statut_validation': 'TEXT',
+    'validateur': 'TEXT',
+    'commentaire': 'TEXT',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },
   'conges_absences': {
     'id': 'TEXT PRIMARY KEY',
     'employe_id': 'TEXT',
+    'employe_nom': 'TEXT',
     'type': 'TEXT',
     'date_debut': 'INTEGER',
     'date_fin': 'INTEGER',
     'statut': 'TEXT',
     'motif': 'TEXT',
+    'justificatif': 'TEXT',
+    'nb_jours': 'REAL',
+    'date_reprise': 'INTEGER',
+    'interim': 'TEXT',
+    'contact': 'TEXT',
+    'commentaire': 'TEXT',
+    'decision_motif': 'TEXT',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },

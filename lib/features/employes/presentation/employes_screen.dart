@@ -20,14 +20,19 @@ class _EmployesScreenState extends State<EmployesScreen> {
 
   final Set<String> _selectedIds = {};
   bool _loading = true;
-  List<String> _departmentOptions = [];
-  List<String> _roleOptions = [];
+  List<_IdLabelOption> _departmentOptions = [];
+  List<_IdLabelOption> _roleOptions = [];
+  List<_IdLabelOption> _roleOptionsActive = [];
+  Map<String, String> _departmentLabelsById = {};
+  Map<String, String> _roleLabelsById = {};
+  Map<String, String> _departmentIdsByLabel = {};
+  Map<String, String> _roleIdsByLabel = {};
   int _page = 0;
   final int _pageSize = 20;
   int _totalEmployees = 0;
 
-  String _filterDepartment = 'Tous';
-  String _filterRole = 'Tous';
+  String _filterDepartment = '';
+  String _filterRole = '';
   String _filterContract = 'Tous';
   String _filterStatus = 'Tous';
   String _filterHireDate = '';
@@ -55,27 +60,55 @@ class _EmployesScreenState extends State<EmployesScreen> {
     final departmentRows = await DaoRegistry.instance.departements.list(orderBy: 'nom ASC');
     final roleRows = await DaoRegistry.instance.postes.list(orderBy: 'intitule ASC');
     final departments = departmentRows
-        .map((row) => (row['nom'] as String?) ?? '')
-        .where((name) => name.trim().isNotEmpty)
-        .toSet()
+        .map(
+          (row) => _IdLabelOption(
+            id: (row['id'] as String?) ?? '',
+            label: (row['nom'] as String?) ?? '',
+          ),
+        )
+        .where((opt) => opt.id.isNotEmpty && opt.label.trim().isNotEmpty)
         .toList()
-      ..sort();
+      ..sort((a, b) => a.label.compareTo(b.label));
     final roles = roleRows
-        .map((row) => (row['intitule'] as String?) ?? '')
-        .where((name) => name.trim().isNotEmpty)
-        .toSet()
+        .map(
+          (row) => _IdLabelOption(
+            id: (row['id'] as String?) ?? '',
+            label: (row['intitule'] as String?) ?? '',
+          ),
+        )
+        .where((opt) => opt.id.isNotEmpty && opt.label.trim().isNotEmpty)
         .toList()
-      ..sort();
+      ..sort((a, b) => a.label.compareTo(b.label));
+    final activeRoles = roleRows
+        .where((row) {
+          final deleted = row['deleted_at'] as int?;
+          final status = (row['statut'] as String?) ?? 'Actif';
+          return deleted == null && status == 'Actif';
+        })
+        .map(
+          (row) => _IdLabelOption(
+            id: (row['id'] as String?) ?? '',
+            label: (row['intitule'] as String?) ?? '',
+          ),
+        )
+        .where((opt) => opt.id.isNotEmpty && opt.label.trim().isNotEmpty)
+        .toList()
+      ..sort((a, b) => a.label.compareTo(b.label));
 
     if (!mounted) return;
     setState(() {
       _departmentOptions = departments;
       _roleOptions = roles;
-      if (_filterDepartment != 'Tous' && !_departmentOptions.contains(_filterDepartment)) {
-        _filterDepartment = 'Tous';
+      _roleOptionsActive = activeRoles;
+      _departmentLabelsById = {for (final opt in departments) opt.id: opt.label};
+      _roleLabelsById = {for (final opt in roles) opt.id: opt.label};
+      _departmentIdsByLabel = {for (final opt in departments) opt.label: opt.id};
+      _roleIdsByLabel = {for (final opt in roles) opt.label: opt.id};
+      if (_filterDepartment.isNotEmpty && !_departmentLabelsById.containsKey(_filterDepartment)) {
+        _filterDepartment = '';
       }
-      if (_filterRole != 'Tous' && !_roleOptions.contains(_filterRole)) {
-        _filterRole = 'Tous';
+      if (_filterRole.isNotEmpty && !_roleLabelsById.containsKey(_filterRole)) {
+        _filterRole = '';
       }
     });
   }
@@ -85,8 +118,8 @@ class _EmployesScreenState extends State<EmployesScreen> {
     setState(() => _loading = true);
 
     final range = _parseHireDateRange(_filterHireDate);
-    final department = _filterDepartment == 'Tous' ? null : _filterDepartment;
-    final role = _filterRole == 'Tous' ? null : _filterRole;
+    final department = _filterDepartment.isEmpty ? null : _filterDepartment;
+    final role = _filterRole.isEmpty ? null : _filterRole;
     final contractType = _filterContract == 'Tous' ? null : _filterContract;
     final status = _filterStatus == 'Tous' ? null : _filterStatus;
 
@@ -137,13 +170,20 @@ class _EmployesScreenState extends State<EmployesScreen> {
     );
 
     if (!mounted) return;
+    final employees = rows.map(_employeeFromRow).toList();
     await _loadFilterOptions();
+    final normalization = _normalizeEmployeeRefs(employees);
+    if (normalization.updated.isNotEmpty) {
+      for (final updated in normalization.updated) {
+        await DaoRegistry.instance.employes.update(updated.id, _employeeToRow(updated, forInsert: false));
+      }
+    }
     setState(() {
       _page = effectivePage;
       _totalEmployees = total;
       _employees
         ..clear()
-        ..addAll(rows.map(_employeeFromRow));
+        ..addAll(normalization.employees);
       _selectedIds.clear();
       _loading = false;
     });
@@ -368,6 +408,240 @@ class _EmployesScreenState extends State<EmployesScreen> {
     return values.map((value) => value.trim()).where((value) => value.isNotEmpty).join(', ');
   }
 
+  _NormalizationResult _normalizeEmployeeRefs(List<Employe> employees) {
+    if (_departmentLabelsById.isEmpty && _roleLabelsById.isEmpty) {
+      return _NormalizationResult(employees, const []);
+    }
+    final updated = <Employe>[];
+    final normalized = employees.map((emp) {
+          final deptId = _departmentLabelsById.containsKey(emp.department)
+              ? emp.department
+              : (_departmentIdsByLabel[emp.department] ?? emp.department);
+          final roleId = _roleLabelsById.containsKey(emp.role)
+              ? emp.role
+              : (_roleIdsByLabel[emp.role] ?? emp.role);
+          if (emp.department == deptId && emp.role == roleId) {
+            return emp;
+          }
+          final updatedEmployee = Employe(
+            id: emp.id,
+            matricule: emp.matricule,
+            fullName: emp.fullName,
+            department: deptId,
+            role: roleId,
+            contractType: emp.contractType,
+            contractStatus: emp.contractStatus,
+            tenure: emp.tenure,
+            phone: emp.phone,
+            email: emp.email,
+            skills: emp.skills,
+            hireDate: emp.hireDate,
+            status: emp.status,
+            dateNaissance: emp.dateNaissance,
+            lieuNaissance: emp.lieuNaissance,
+            nationalite: emp.nationalite,
+            etatCivilDetaille: emp.etatCivilDetaille,
+            nir: emp.nir,
+            situationFamiliale: emp.situationFamiliale,
+            adresse: emp.adresse,
+            contactUrgence: emp.contactUrgence,
+            cni: emp.cni,
+            passeport: emp.passeport,
+            permis: emp.permis,
+            titreSejour: emp.titreSejour,
+            rib: emp.rib,
+            bic: emp.bic,
+            salaireVerse: emp.salaireVerse,
+            posteActuel: emp.posteActuel,
+            postePrecedent: emp.postePrecedent,
+            dernierePromotion: emp.dernierePromotion,
+            augmentation: emp.augmentation,
+            objectifs: emp.objectifs,
+            evaluation: emp.evaluation,
+            contractStartDate: emp.contractStartDate,
+            contractEndDate: emp.contractEndDate,
+            periodeEssaiDuree: emp.periodeEssaiDuree,
+            periodeEssaiFin: emp.periodeEssaiFin,
+            tempsTravailType: emp.tempsTravailType,
+            tempsPartielPourcentage: emp.tempsPartielPourcentage,
+            classification: emp.classification,
+            coefficient: emp.coefficient,
+            conventionCollective: emp.conventionCollective,
+            statutCadre: emp.statutCadre,
+            avenants: emp.avenants,
+            charteInformatique: emp.charteInformatique,
+            confidentialite: emp.confidentialite,
+            clausesSignees: emp.clausesSignees,
+            carteVitale: emp.carteVitale,
+            justificatifDomicile: emp.justificatifDomicile,
+            diplomesCertifies: emp.diplomesCertifies,
+            habilitations: emp.habilitations,
+            diplome: emp.diplome,
+            certification: emp.certification,
+            formationsSuivies: emp.formationsSuivies,
+            formationsPlanifiees: emp.formationsPlanifiees,
+            competencesTech: emp.competencesTech,
+            competencesComport: emp.competencesComport,
+            langues: emp.langues,
+            congesRestants: emp.congesRestants,
+            rttRestants: emp.rttRestants,
+            absencesJustifiees: emp.absencesJustifiees,
+            retards: emp.retards,
+            teletravail: emp.teletravail,
+            dernierPointage: emp.dernierPointage,
+            planningContractuel: emp.planningContractuel,
+            quotaHeures: emp.quotaHeures,
+            soldeCongesCalcule: emp.soldeCongesCalcule,
+            rttPeriode: emp.rttPeriode,
+            salaireBase: emp.salaireBase,
+            primePerformance: emp.primePerformance,
+            mutuelle: emp.mutuelle,
+            ticketRestaurant: emp.ticketRestaurant,
+            dernierBulletin: emp.dernierBulletin,
+            historiqueBulletins: emp.historiqueBulletins,
+            regimeFiscal: emp.regimeFiscal,
+            tauxPas: emp.tauxPas,
+            modePaiement: emp.modePaiement,
+            variablesRecurrence: emp.variablesRecurrence,
+            pcPortable: emp.pcPortable,
+            telephonePro: emp.telephonePro,
+            badgeAcces: emp.badgeAcces,
+            licence: emp.licence,
+            manager: emp.manager,
+            entiteLegale: emp.entiteLegale,
+            siteAffectation: emp.siteAffectation,
+            centreCout: emp.centreCout,
+            consentementRgpd: emp.consentementRgpd,
+            habilitationsSystemes: emp.habilitationsSystemes,
+            historiqueModifications: emp.historiqueModifications,
+            visitesMedicales: emp.visitesMedicales,
+            aptitudeMedicale: emp.aptitudeMedicale,
+            restrictionsPoste: emp.restrictionsPoste,
+          );
+          updated.add(updatedEmployee);
+          return updatedEmployee;
+        })
+        .toList();
+    return _NormalizationResult(normalized, updated);
+  }
+
+  String _departmentLabel(String id) {
+    return _departmentLabelsById[id] ?? id;
+  }
+
+  String _roleLabel(String id) {
+    return _roleLabelsById[id] ?? id;
+  }
+
+  List<_IdLabelOption> _roleOptionsForForm({String? currentId}) {
+    if (currentId == null || currentId.isEmpty) return _roleOptionsActive;
+    final exists = _roleOptionsActive.any((opt) => opt.id == currentId);
+    if (exists) return _roleOptionsActive;
+    final label = _roleLabelsById[currentId] ?? currentId;
+    return [
+      _IdLabelOption(id: currentId, label: label),
+      ..._roleOptionsActive,
+    ];
+  }
+
+  Employe _withDisplayLabels(Employe employe) {
+    return Employe(
+      id: employe.id,
+      matricule: employe.matricule,
+      fullName: employe.fullName,
+      department: _departmentLabel(employe.department),
+      role: _roleLabel(employe.role),
+      contractType: employe.contractType,
+      contractStatus: employe.contractStatus,
+      tenure: employe.tenure,
+      phone: employe.phone,
+      email: employe.email,
+      skills: employe.skills,
+      hireDate: employe.hireDate,
+      status: employe.status,
+      dateNaissance: employe.dateNaissance,
+      lieuNaissance: employe.lieuNaissance,
+      nationalite: employe.nationalite,
+      etatCivilDetaille: employe.etatCivilDetaille,
+      nir: employe.nir,
+      situationFamiliale: employe.situationFamiliale,
+      adresse: employe.adresse,
+      contactUrgence: employe.contactUrgence,
+      cni: employe.cni,
+      passeport: employe.passeport,
+      permis: employe.permis,
+      titreSejour: employe.titreSejour,
+      rib: employe.rib,
+      bic: employe.bic,
+      salaireVerse: employe.salaireVerse,
+      posteActuel: employe.posteActuel,
+      postePrecedent: employe.postePrecedent,
+      dernierePromotion: employe.dernierePromotion,
+      augmentation: employe.augmentation,
+      objectifs: employe.objectifs,
+      evaluation: employe.evaluation,
+      contractStartDate: employe.contractStartDate,
+      contractEndDate: employe.contractEndDate,
+      periodeEssaiDuree: employe.periodeEssaiDuree,
+      periodeEssaiFin: employe.periodeEssaiFin,
+      tempsTravailType: employe.tempsTravailType,
+      tempsPartielPourcentage: employe.tempsPartielPourcentage,
+      classification: employe.classification,
+      coefficient: employe.coefficient,
+      conventionCollective: employe.conventionCollective,
+      statutCadre: employe.statutCadre,
+      avenants: employe.avenants,
+      charteInformatique: employe.charteInformatique,
+      confidentialite: employe.confidentialite,
+      clausesSignees: employe.clausesSignees,
+      carteVitale: employe.carteVitale,
+      justificatifDomicile: employe.justificatifDomicile,
+      diplomesCertifies: employe.diplomesCertifies,
+      habilitations: employe.habilitations,
+      diplome: employe.diplome,
+      certification: employe.certification,
+      formationsSuivies: employe.formationsSuivies,
+      formationsPlanifiees: employe.formationsPlanifiees,
+      competencesTech: employe.competencesTech,
+      competencesComport: employe.competencesComport,
+      langues: employe.langues,
+      congesRestants: employe.congesRestants,
+      rttRestants: employe.rttRestants,
+      absencesJustifiees: employe.absencesJustifiees,
+      retards: employe.retards,
+      teletravail: employe.teletravail,
+      dernierPointage: employe.dernierPointage,
+      planningContractuel: employe.planningContractuel,
+      quotaHeures: employe.quotaHeures,
+      soldeCongesCalcule: employe.soldeCongesCalcule,
+      rttPeriode: employe.rttPeriode,
+      salaireBase: employe.salaireBase,
+      primePerformance: employe.primePerformance,
+      mutuelle: employe.mutuelle,
+      ticketRestaurant: employe.ticketRestaurant,
+      dernierBulletin: employe.dernierBulletin,
+      historiqueBulletins: employe.historiqueBulletins,
+      regimeFiscal: employe.regimeFiscal,
+      tauxPas: employe.tauxPas,
+      modePaiement: employe.modePaiement,
+      variablesRecurrence: employe.variablesRecurrence,
+      pcPortable: employe.pcPortable,
+      telephonePro: employe.telephonePro,
+      badgeAcces: employe.badgeAcces,
+      licence: employe.licence,
+      manager: employe.manager,
+      entiteLegale: employe.entiteLegale,
+      siteAffectation: employe.siteAffectation,
+      centreCout: employe.centreCout,
+      consentementRgpd: employe.consentementRgpd,
+      habilitationsSystemes: employe.habilitationsSystemes,
+      historiqueModifications: employe.historiqueModifications,
+      visitesMedicales: employe.visitesMedicales,
+      aptitudeMedicale: employe.aptitudeMedicale,
+      restrictionsPoste: employe.restrictionsPoste,
+    );
+  }
+
   _EpochRange? _parseHireDateRange(String value) {
     final trimmed = value.trim();
     if (!RegExp(r'^\d{4}-\d{2}$').hasMatch(trimmed)) return null;
@@ -391,10 +665,11 @@ class _EmployesScreenState extends State<EmployesScreen> {
   }
 
   void _openDetail(Employe employe) {
+    final displayed = _withDisplayLabels(employe);
     showDialog(
       context: context,
       builder: (_) => Dialog.fullscreen(
-        child: EmployeeDetailScreen(employe: employe),
+        child: EmployeeDetailScreen(employe: displayed),
       ),
     );
   }
@@ -406,7 +681,7 @@ class _EmployesScreenState extends State<EmployesScreen> {
         child: _NewEmployeeWizardDialog(
           existing: _employees,
           departmentOptions: _departmentOptions,
-          roleOptions: _roleOptions,
+          roleOptions: _roleOptionsActive,
         ),
       ),
     ).then((created) async {
@@ -494,6 +769,7 @@ class _EmployesScreenState extends State<EmployesScreen> {
   }
 
   Future<void> _showEditEmployeeDialog(Employe employe) async {
+    final roleOptions = _roleOptionsForForm(currentId: employe.role);
     final updated = await showDialog<Employe>(
       context: context,
       builder: (context) => Dialog.fullscreen(
@@ -501,7 +777,7 @@ class _EmployesScreenState extends State<EmployesScreen> {
           employe: employe,
           existing: _employees,
           departmentOptions: _departmentOptions,
-          roleOptions: _roleOptions,
+          roleOptions: roleOptions,
         ),
       ),
     );
@@ -544,19 +820,19 @@ class _EmployesScreenState extends State<EmployesScreen> {
       builder: (context, constraints) {
         final isWide = constraints.maxWidth > 980;
         final filters = [
-          _FilterDropdown(
+          _FilterOptionDropdown(
             label: 'Departement',
             value: _filterDepartment,
-            items: ['Tous', ..._departmentOptions],
+            options: _departmentOptions,
             onChanged: (value) {
               setState(() => _filterDepartment = value);
               _loadEmployees(resetPage: true);
             },
           ),
-          _FilterDropdown(
+          _FilterOptionDropdown(
             label: 'Poste',
             value: _filterRole,
-            items: ['Tous', ..._roleOptions],
+            options: _roleOptions,
             onChanged: (value) {
               setState(() => _filterRole = value);
               _loadEmployees(resetPage: true);
@@ -749,9 +1025,19 @@ class _EmployesScreenState extends State<EmployesScreen> {
               cells: [
                 DataCell(CircleAvatar(child: Text(emp.fullName.substring(0, 1)))),
                 DataCell(Text(emp.matricule)),
-                DataCell(Text(emp.fullName)),
-                DataCell(Text(emp.department)),
-                DataCell(Text(emp.role)),
+                DataCell(
+                  SizedBox(
+                    width: 180,
+                    child: Text(
+                      emp.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                    ),
+                  ),
+                ),
+                DataCell(Text(_departmentLabel(emp.department))),
+                DataCell(Text(_roleLabel(emp.role))),
                 DataCell(Text('${emp.contractType} / ${emp.contractStatus}')),
                 DataCell(Text(emp.tenure)),
                 DataCell(
@@ -852,6 +1138,7 @@ class _FilterDropdown extends StatelessWidget {
       width: 190,
       child: DropdownButtonFormField<String>(
         value: value,
+        isExpanded: true,
         decoration: InputDecoration(
           labelText: label,
           filled: true,
@@ -860,11 +1147,63 @@ class _FilterDropdown extends StatelessWidget {
             .map(
               (item) => DropdownMenuItem(
                 value: item,
-                child: Text(item),
+                child: Text(
+                  item,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                ),
               ),
             )
             .toList(),
         onChanged: (value) => onChanged(value ?? 'Tous'),
+      ),
+    );
+  }
+}
+
+class _FilterOptionDropdown extends StatelessWidget {
+  const _FilterOptionDropdown({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String value;
+  final List<_IdLabelOption> options;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = [
+      const _IdLabelOption(id: '', label: 'Tous'),
+      ...options,
+    ];
+    return SizedBox(
+      width: 190,
+      child: DropdownButtonFormField<String>(
+        value: value,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: label,
+          filled: true,
+        ),
+        items: entries
+            .map(
+              (option) => DropdownMenuItem(
+                value: option.id,
+                child: Text(
+                  option.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                ),
+              ),
+            )
+            .toList(),
+        onChanged: (selected) => onChanged(selected ?? ''),
       ),
     );
   }
@@ -899,8 +1238,8 @@ class _NewEmployeeWizardDialog extends StatefulWidget {
   });
 
   final List<Employe> existing;
-  final List<String> departmentOptions;
-  final List<String> roleOptions;
+  final List<_IdLabelOption> departmentOptions;
+  final List<_IdLabelOption> roleOptions;
 
   @override
   State<_NewEmployeeWizardDialog> createState() => _NewEmployeeWizardDialogState();
@@ -1421,12 +1760,12 @@ class _NewEmployeeWizardDialogState extends State<_NewEmployeeWizardDialog> {
                   _StepSectionTitle(label: 'Affectation'),
                   _FieldWrap(
                     children: [
-                      _WizardDropdown(
+                      _WizardSelectField(
                         controller: _departmentCtrl,
                         label: 'Departement',
                         options: widget.departmentOptions,
                       ),
-                      _WizardDropdown(
+                      _WizardSelectField(
                         controller: _roleCtrl,
                         label: 'Poste',
                         options: widget.roleOptions,
@@ -1635,8 +1974,8 @@ class _WizardField extends StatelessWidget {
   }
 }
 
-class _WizardDropdown extends StatelessWidget {
-  const _WizardDropdown({
+class _WizardSelectField extends StatelessWidget {
+  const _WizardSelectField({
     required this.controller,
     required this.label,
     required this.options,
@@ -1644,7 +1983,7 @@ class _WizardDropdown extends StatelessWidget {
 
   final TextEditingController controller;
   final String label;
-  final List<String> options;
+  final List<_IdLabelOption> options;
 
   @override
   Widget build(BuildContext context) {
@@ -1652,21 +1991,27 @@ class _WizardDropdown extends StatelessWidget {
       return _WizardField(controller: controller, label: label);
     }
 
-    final items = options.contains(controller.text) || controller.text.isEmpty
+    final normalizedOptions = options.any((opt) => opt.id == controller.text) || controller.text.isEmpty
         ? options
-        : [controller.text, ...options];
-    final value = controller.text.isEmpty ? items.first : controller.text;
+        : [_IdLabelOption(id: controller.text, label: controller.text), ...options];
+    final value = controller.text.isEmpty ? normalizedOptions.first.id : controller.text;
 
     return SizedBox(
       width: 260,
       child: DropdownButtonFormField<String>(
         value: value,
+        isExpanded: true,
         decoration: InputDecoration(labelText: label),
-        items: items
+        items: normalizedOptions
             .map(
               (option) => DropdownMenuItem(
-                value: option,
-                child: Text(option),
+                value: option.id,
+                child: Text(
+                  option.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                ),
               ),
             )
             .toList(),
@@ -1688,8 +2033,8 @@ class _EditEmployeeDialog extends StatefulWidget {
 
   final Employe employe;
   final List<Employe> existing;
-  final List<String> departmentOptions;
-  final List<String> roleOptions;
+  final List<_IdLabelOption> departmentOptions;
+  final List<_IdLabelOption> roleOptions;
 
   @override
   State<_EditEmployeeDialog> createState() => _EditEmployeeDialogState();
@@ -1913,12 +2258,12 @@ class _EditEmployeeDialogState extends State<_EditEmployeeDialog> {
             _EditSection(
               title: 'Affectation',
               children: [
-                _EditDropdown(
+                _EditSelectField(
                   controller: _ctrl('department', widget.employe.department),
                   label: 'Departement',
                   options: widget.departmentOptions,
                 ),
-                _EditDropdown(
+                _EditSelectField(
                   controller: _ctrl('role', widget.employe.role),
                   label: 'Poste',
                   options: widget.roleOptions,
@@ -2123,8 +2468,8 @@ class _EditField extends StatelessWidget {
   }
 }
 
-class _EditDropdown extends StatelessWidget {
-  const _EditDropdown({
+class _EditSelectField extends StatelessWidget {
+  const _EditSelectField({
     required this.controller,
     required this.label,
     required this.options,
@@ -2132,7 +2477,7 @@ class _EditDropdown extends StatelessWidget {
 
   final TextEditingController controller;
   final String label;
-  final List<String> options;
+  final List<_IdLabelOption> options;
 
   @override
   Widget build(BuildContext context) {
@@ -2140,21 +2485,27 @@ class _EditDropdown extends StatelessWidget {
       return _EditField(controller: controller, label: label);
     }
 
-    final items = options.contains(controller.text) || controller.text.isEmpty
+    final normalizedOptions = options.any((opt) => opt.id == controller.text) || controller.text.isEmpty
         ? options
-        : [controller.text, ...options];
-    final value = controller.text.isEmpty ? items.first : controller.text;
+        : [_IdLabelOption(id: controller.text, label: controller.text), ...options];
+    final value = controller.text.isEmpty ? normalizedOptions.first.id : controller.text;
 
     return SizedBox(
       width: 260,
       child: DropdownButtonFormField<String>(
         value: value,
+        isExpanded: true,
         decoration: InputDecoration(labelText: label),
-        items: items
+        items: normalizedOptions
             .map(
               (option) => DropdownMenuItem(
-                value: option,
-                child: Text(option),
+                value: option.id,
+                child: Text(
+                  option.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                ),
               ),
             )
             .toList(),
@@ -2171,4 +2522,18 @@ class _EpochRange {
 
   final int start;
   final int end;
+}
+
+class _IdLabelOption {
+  const _IdLabelOption({required this.id, required this.label});
+
+  final String id;
+  final String label;
+}
+
+class _NormalizationResult {
+  const _NormalizationResult(this.employees, this.updated);
+
+  final List<Employe> employees;
+  final List<Employe> updated;
 }
