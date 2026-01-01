@@ -1,9 +1,11 @@
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'dart:convert';
 
 class SQLiteService {
   static final SQLiteService _instance = SQLiteService._internal();
@@ -37,6 +39,7 @@ class SQLiteService {
         },
         onOpen: (db) async {
           await _ensureSchema(db);
+          await _ensureDefaultAdmin(db);
         },
       ),
     );
@@ -94,6 +97,27 @@ class SQLiteService {
   Future<bool> _columnExists(Database db, String table, String column) async {
     final rows = await db.rawQuery('PRAGMA table_info($table)');
     return rows.any((row) => row['name'] == column);
+  }
+
+  Future<void> _ensureDefaultAdmin(Database db) async {
+    final rows = await db.query('utilisateurs_systeme', limit: 1);
+    if (rows.isNotEmpty) return;
+
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final passwordHash = sha256.convert(utf8.encode('admin')).toString();
+    await db.insert('utilisateurs_systeme', {
+      'id': 'admin-001',
+      'nom': 'Administrateur',
+      'email': 'admin@gmail.com',
+      'role': 'Administrateur RH',
+      'statut': 'Actif',
+      'password_hash': passwordHash,
+      'is_active': 1,
+      'must_change_password': 1,
+      'last_login': null,
+      'created_at': now,
+      'updated_at': now,
+    });
   }
 }
 
@@ -324,6 +348,12 @@ final Map<String, Map<String, String>> _schema = {
     'email': 'TEXT',
     'role': 'TEXT',
     'statut': 'TEXT',
+    'telephone': 'TEXT',
+    'departement': 'TEXT',
+    'password_hash': 'TEXT',
+    'is_active': 'INTEGER DEFAULT 1',
+    'must_change_password': 'INTEGER DEFAULT 0',
+    'last_login': 'INTEGER',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },

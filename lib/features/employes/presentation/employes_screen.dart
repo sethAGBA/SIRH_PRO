@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../shared/models/employe.dart';
 import 'employee_detail_screen.dart';
@@ -120,6 +121,7 @@ class _EmployesScreenState extends State<EmployesScreen> {
     ).then((created) {
       if (created == null) return;
       setState(() => _allEmployees.add(created));
+      showOperationNotice(context, message: 'Employe cree.', success: true);
     });
   }
 
@@ -169,6 +171,7 @@ class _EmployesScreenState extends State<EmployesScreen> {
     final index = _allEmployees.indexWhere((e) => e.id == employe.id);
     if (index == -1) return;
     setState(() => _allEmployees[index] = updated);
+    showOperationNotice(context, message: 'Employe mis a jour.', success: true);
   }
 
   Future<void> _confirmDeleteEmployee(Employe employe) async {
@@ -193,6 +196,7 @@ class _EmployesScreenState extends State<EmployesScreen> {
 
     if (confirm != true) return;
     setState(() => _allEmployees.removeWhere((e) => e.id == employe.id));
+    showOperationNotice(context, message: 'Employe supprime.', success: true);
   }
 
   Widget _buildFilterRow(BuildContext context) {

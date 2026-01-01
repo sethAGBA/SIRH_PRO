@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 
 class SanteTravailScreen extends StatefulWidget {
@@ -293,12 +294,12 @@ class _AccidentDetailDialog extends StatelessWidget {
           automaticallyImplyLeading: false,
           actions: [
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Declaration CPAM envoyee.', success: true),
               icon: const Icon(Icons.send, size: 18),
               label: const Text('Declarer CPAM'),
             ),
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Dossier cloture.', success: true),
               icon: const Icon(Icons.check_circle_outline, size: 18),
               label: const Text('Cloturer'),
             ),
@@ -452,9 +453,18 @@ class _AccidentFormSectionState extends State<_AccidentFormSection> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                OutlinedButton(onPressed: () {}, child: const Text('Scanner justificatifs')),
-                OutlinedButton(onPressed: () {}, child: const Text('Enregistrer')),
-                OutlinedButton(onPressed: () {}, child: const Text('Declarer CPAM')),
+                OutlinedButton(
+                  onPressed: () => showOperationNotice(context, message: 'Justificatifs scannes.', success: true),
+                  child: const Text('Scanner justificatifs'),
+                ),
+                OutlinedButton(
+                  onPressed: () => showOperationNotice(context, message: 'Declaration enregistree.', success: true),
+                  child: const Text('Enregistrer'),
+                ),
+                OutlinedButton(
+                  onPressed: () => showOperationNotice(context, message: 'Declaration CPAM envoyee.', success: true),
+                  child: const Text('Declarer CPAM'),
+                ),
               ],
             ),
           ],

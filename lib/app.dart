@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'core/constants/app_constants.dart';
 import 'core/theme/theme_controller.dart';
-import 'features/dashboard/presentation/dashboard_screen.dart';
+import 'features/auth/presentation/login_screen.dart';
 
 class SirhProApp extends StatefulWidget {
   const SirhProApp({super.key});
@@ -39,7 +39,7 @@ class _SirhProAppState extends State<SirhProApp> {
             themeMode: _themeController.mode,
             theme: _buildLightTheme(),
             darkTheme: _buildDarkTheme(),
-            home: const DashboardScreen(),
+            home: const LoginScreen(),
           );
         },
       ),

@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/time_calculator.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 
 class PresencesScreen extends StatefulWidget {
@@ -227,7 +228,7 @@ class _PointageTab extends StatelessWidget {
                   runSpacing: 12,
                   children: [
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: () => showOperationNotice(context, message: 'Scan badge enregistre.', success: true),
                       icon: const Icon(Icons.qr_code_scanner),
                       label: const Text('Scan carte / QR code'),
                       style: ElevatedButton.styleFrom(
@@ -265,13 +266,13 @@ class _PointageTab extends StatelessWidget {
                 Row(
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: () => showOperationNotice(context, message: 'Export mensuel lance.', success: true),
                       icon: const Icon(Icons.picture_as_pdf_outlined),
                       label: const Text('Export heures mensuel'),
                     ),
                     const SizedBox(width: 8),
                     OutlinedButton.icon(
-                      onPressed: () {},
+                      onPressed: () => showOperationNotice(context, message: 'Export CSV lance.', success: true),
                       icon: const Icon(Icons.download_outlined),
                       label: const Text('Exporter CSV'),
                     ),
@@ -647,18 +648,22 @@ class _PointageManualDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final employeCtrl = TextEditingController();
+    final dateCtrl = TextEditingController();
+    final heureCtrl = TextEditingController();
+    final justificationCtrl = TextEditingController();
     return AlertDialog(
       title: const Text('Pointage manuel'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          TextField(decoration: InputDecoration(labelText: 'Employe')),
-          SizedBox(height: 8),
-          TextField(decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)')),
-          SizedBox(height: 8),
-          TextField(decoration: InputDecoration(labelText: 'Heure')),
-          SizedBox(height: 8),
-          TextField(decoration: InputDecoration(labelText: 'Justification')),
+        children: [
+          TextField(controller: employeCtrl, decoration: const InputDecoration(labelText: 'Employe')),
+          const SizedBox(height: 8),
+          TextField(controller: dateCtrl, decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)')),
+          const SizedBox(height: 8),
+          TextField(controller: heureCtrl, decoration: const InputDecoration(labelText: 'Heure')),
+          const SizedBox(height: 8),
+          TextField(controller: justificationCtrl, decoration: const InputDecoration(labelText: 'Justification')),
         ],
       ),
       actions: [
@@ -667,7 +672,16 @@ class _PointageManualDialog extends StatelessWidget {
           child: const Text('Annuler'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (employeCtrl.text.trim().isEmpty ||
+                dateCtrl.text.trim().isEmpty ||
+                heureCtrl.text.trim().isEmpty) {
+              showOperationNotice(context, message: 'Champs obligatoires manquants.', success: false);
+              return;
+            }
+            showOperationNotice(context, message: 'Pointage enregistre.', success: true);
+            Navigator.of(context).pop();
+          },
           child: const Text('Enregistrer'),
         ),
       ],
@@ -680,16 +694,19 @@ class _TeletravailDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final employeCtrl = TextEditingController();
+    final dateCtrl = TextEditingController();
+    final motifCtrl = TextEditingController();
     return AlertDialog(
       title: const Text('Declaration teletravail'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          TextField(decoration: InputDecoration(labelText: 'Employe')),
-          SizedBox(height: 8),
-          TextField(decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)')),
-          SizedBox(height: 8),
-          TextField(decoration: InputDecoration(labelText: 'Motif')),
+        children: [
+          TextField(controller: employeCtrl, decoration: const InputDecoration(labelText: 'Employe')),
+          const SizedBox(height: 8),
+          TextField(controller: dateCtrl, decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)')),
+          const SizedBox(height: 8),
+          TextField(controller: motifCtrl, decoration: const InputDecoration(labelText: 'Motif')),
         ],
       ),
       actions: [
@@ -698,7 +715,14 @@ class _TeletravailDialog extends StatelessWidget {
           child: const Text('Annuler'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (employeCtrl.text.trim().isEmpty || dateCtrl.text.trim().isEmpty) {
+              showOperationNotice(context, message: 'Champs obligatoires manquants.', success: false);
+              return;
+            }
+            showOperationNotice(context, message: 'Teletravail declare.', success: true);
+            Navigator.of(context).pop();
+          },
           child: const Text('Enregistrer'),
         ),
       ],
@@ -711,18 +735,22 @@ class _AjustementDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final employeCtrl = TextEditingController();
+    final dateCtrl = TextEditingController();
+    final horaireCtrl = TextEditingController();
+    final justificationCtrl = TextEditingController();
     return AlertDialog(
       title: const Text('Ajustement horaire'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          TextField(decoration: InputDecoration(labelText: 'Employe')),
-          SizedBox(height: 8),
-          TextField(decoration: InputDecoration(labelText: 'Date (YYYY-MM-DD)')),
-          SizedBox(height: 8),
-          TextField(decoration: InputDecoration(labelText: 'Nouvel horaire')),
-          SizedBox(height: 8),
-          TextField(decoration: InputDecoration(labelText: 'Justification')),
+        children: [
+          TextField(controller: employeCtrl, decoration: const InputDecoration(labelText: 'Employe')),
+          const SizedBox(height: 8),
+          TextField(controller: dateCtrl, decoration: const InputDecoration(labelText: 'Date (YYYY-MM-DD)')),
+          const SizedBox(height: 8),
+          TextField(controller: horaireCtrl, decoration: const InputDecoration(labelText: 'Nouvel horaire')),
+          const SizedBox(height: 8),
+          TextField(controller: justificationCtrl, decoration: const InputDecoration(labelText: 'Justification')),
         ],
       ),
       actions: [
@@ -731,7 +759,16 @@ class _AjustementDialog extends StatelessWidget {
           child: const Text('Annuler'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (employeCtrl.text.trim().isEmpty ||
+                dateCtrl.text.trim().isEmpty ||
+                horaireCtrl.text.trim().isEmpty) {
+              showOperationNotice(context, message: 'Champs obligatoires manquants.', success: false);
+              return;
+            }
+            showOperationNotice(context, message: 'Ajustement enregistre.', success: true);
+            Navigator.of(context).pop();
+          },
           child: const Text('Enregistrer'),
         ),
       ],

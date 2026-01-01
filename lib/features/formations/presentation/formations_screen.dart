@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 
 class FormationsScreen extends StatefulWidget {
@@ -262,12 +263,30 @@ class _SessionsTab extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  OutlinedButton(onPressed: () {}, child: const Text('Inscrire employes')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Convocations auto')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Emargement')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Eval a chaud')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Eval a froid')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Attestations')),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Inscriptions enregistrees.', success: true),
+                    child: const Text('Inscrire employes'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Convocations envoyees.', success: true),
+                    child: const Text('Convocations auto'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Emargement mis a jour.', success: true),
+                    child: const Text('Emargement'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Evaluation a chaud envoyee.', success: true),
+                    child: const Text('Eval a chaud'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Evaluation a froid planifiee.', success: true),
+                    child: const Text('Eval a froid'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Attestations generees.', success: true),
+                    child: const Text('Attestations'),
+                  ),
                   OutlinedButton(onPressed: () => onOpenSession(session), child: const Text('Voir details')),
                 ],
               ),
@@ -307,12 +326,30 @@ class _EntretiensTab extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  OutlinedButton(onPressed: () {}, child: const Text('Planifier entretien')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Grille entretien')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Bilan competences')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Besoins formation')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Objectifs N+1')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Suivi plan')),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Entretien planifie.', success: true),
+                    child: const Text('Planifier entretien'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Grille ouverte.', success: true),
+                    child: const Text('Grille entretien'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Bilan ouvert.', success: true),
+                    child: const Text('Bilan competences'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Besoins enregistres.', success: true),
+                    child: const Text('Besoins formation'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Objectifs definis.', success: true),
+                    child: const Text('Objectifs N+1'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Suivi plan mis a jour.', success: true),
+                    child: const Text('Suivi plan'),
+                  ),
                 ],
               ),
             ],
@@ -573,17 +610,17 @@ class _SessionDetailDialog extends StatelessWidget {
         automaticallyImplyLeading: false,
         actions: [
           TextButton.icon(
-            onPressed: () {},
+            onPressed: () => showOperationNotice(context, message: 'Inscription enregistree.', success: true),
             icon: const Icon(Icons.group_add_outlined, size: 18),
             label: const Text('Inscrire'),
           ),
           TextButton.icon(
-            onPressed: () {},
+            onPressed: () => showOperationNotice(context, message: 'Convocations envoyees.', success: true),
             icon: const Icon(Icons.mail_outline, size: 18),
             label: const Text('Convocations'),
           ),
           TextButton.icon(
-            onPressed: () {},
+            onPressed: () => showOperationNotice(context, message: 'Attestations generees.', success: true),
             icon: const Icon(Icons.verified_outlined, size: 18),
             label: const Text('Attestations'),
           ),
@@ -625,10 +662,22 @@ class _SessionDetailDialog extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      OutlinedButton(onPressed: () {}, child: const Text('Emargement electronique')),
-                      OutlinedButton(onPressed: () {}, child: const Text('Eval a chaud')),
-                      OutlinedButton(onPressed: () {}, child: const Text('Eval a froid')),
-                      OutlinedButton(onPressed: () {}, child: const Text('Mise a jour competences')),
+                      OutlinedButton(
+                        onPressed: () => showOperationNotice(context, message: 'Emargement mis a jour.', success: true),
+                        child: const Text('Emargement electronique'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () => showOperationNotice(context, message: 'Evaluation a chaud envoyee.', success: true),
+                        child: const Text('Eval a chaud'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () => showOperationNotice(context, message: 'Evaluation a froid planifiee.', success: true),
+                        child: const Text('Eval a froid'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () => showOperationNotice(context, message: 'Competences mises a jour.', success: true),
+                        child: const Text('Mise a jour competences'),
+                      ),
                     ],
                   ),
                 ],

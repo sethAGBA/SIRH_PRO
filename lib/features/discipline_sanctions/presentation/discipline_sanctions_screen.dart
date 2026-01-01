@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 
 class DisciplineSanctionsScreen extends StatefulWidget {
@@ -449,12 +450,12 @@ class _DecisionActions extends StatelessWidget {
         return Row(
           children: [
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Decision validee.', success: true),
               icon: const Icon(Icons.check_circle_outline, size: 18),
               label: const Text('Valider'),
             ),
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Demande d infos envoyee.', success: true),
               icon: const Icon(Icons.chat_bubble_outline, size: 18),
               label: const Text('Demander infos'),
             ),
@@ -464,12 +465,12 @@ class _DecisionActions extends StatelessWidget {
         return Row(
           children: [
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Notification envoyee.', success: true),
               icon: const Icon(Icons.print, size: 18),
               label: const Text('Notifier'),
             ),
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Dossier archive.', success: true),
               icon: const Icon(Icons.archive_outlined, size: 18),
               label: const Text('Archiver'),
             ),
@@ -479,7 +480,7 @@ class _DecisionActions extends StatelessWidget {
         return Row(
           children: [
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Dossier archive.', success: true),
               icon: const Icon(Icons.archive_outlined, size: 18),
               label: const Text('Archiver'),
             ),

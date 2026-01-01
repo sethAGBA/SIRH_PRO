@@ -19,11 +19,17 @@ class AppSidebar extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.onSelect,
+    this.onLogout,
+    this.userName,
+    this.userEmail,
   });
 
   final List<AppSidebarItem> items;
   final int selectedIndex;
   final ValueChanged<int> onSelect;
+  final VoidCallback? onLogout;
+  final String? userName;
+  final String? userEmail;
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +62,11 @@ class AppSidebar extends StatelessWidget {
                 },
               ),
             ),
-            const _SidebarFooter(),
+            _SidebarFooter(
+              onLogout: onLogout,
+              userName: userName,
+              userEmail: userEmail,
+            ),
           ],
         ),
       ),
@@ -158,7 +168,11 @@ class _SidebarItem extends StatelessWidget {
 }
 
 class _SidebarFooter extends StatelessWidget {
-  const _SidebarFooter();
+  const _SidebarFooter({this.onLogout, this.userName, this.userEmail});
+
+  final VoidCallback? onLogout;
+  final String? userName;
+  final String? userEmail;
 
   @override
   Widget build(BuildContext context) {
@@ -175,12 +189,38 @@ class _SidebarFooter extends StatelessWidget {
             child: Icon(Icons.person, size: 16, color: Colors.white),
           ),
           const SizedBox(width: 10),
-          const Expanded(
-            child: Text(
-              'Admin RH',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  userName ?? 'Utilisateur',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (userEmail != null && userEmail!.isNotEmpty)
+                  Text(
+                    userEmail!,
+                    style: const TextStyle(color: Colors.white38, fontSize: 10),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
             ),
           ),
+          IconButton(
+            onPressed: onLogout,
+            icon: const Icon(
+              Icons.logout,
+              color: Colors.white70,
+              size: 18,
+            ),
+            tooltip: 'Deconnexion',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 8),
           IconButton(
             onPressed: themeController.toggle,
             icon: Icon(

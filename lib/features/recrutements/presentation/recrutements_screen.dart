@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 
 class RecrutementsScreen extends StatefulWidget {
@@ -144,7 +145,7 @@ class _RecrutementsScreenState extends State<RecrutementsScreen> {
                 ),
                 const Spacer(),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () => showOperationNotice(context, message: 'Import CV lance.', success: true),
                   icon: const Icon(Icons.upload_file),
                   label: const Text('Importer CV'),
                   style: ElevatedButton.styleFrom(
@@ -326,15 +327,15 @@ class _CandidateCard extends StatelessWidget {
             spacing: 8,
             children: [
               TextButton(
-                onPressed: () {},
+                onPressed: () => showOperationNotice(context, message: 'Entretien planifie.', success: true),
                 child: const Text('Planifier'),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () => showOperationNotice(context, message: 'Email envoye.', success: true),
                 child: const Text('Email'),
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () => showOperationNotice(context, message: 'Candidature archivee.', success: true),
                 child: const Text('Archiver'),
               ),
               TextButton(
@@ -483,17 +484,17 @@ class _CandidateDetailDialog extends StatelessWidget {
           automaticallyImplyLeading: false,
           actions: [
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Entretien planifie.', success: true),
               icon: const Icon(Icons.event_available, size: 18),
               label: const Text('Planifier entretien'),
             ),
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Email envoye.', success: true),
               icon: const Icon(Icons.mail_outline, size: 18),
               label: const Text('Envoyer email'),
             ),
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Offre generee.', success: true),
               icon: const Icon(Icons.description_outlined, size: 18),
               label: const Text('Generer offre'),
             ),

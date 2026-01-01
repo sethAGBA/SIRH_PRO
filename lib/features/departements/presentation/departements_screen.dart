@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../shared/models/departement.dart';
 import '../../../shared/models/org_node.dart';
@@ -109,6 +110,7 @@ class _DepartementsScreenState extends State<DepartementsScreen> {
                   );
                 });
               }
+              showOperationNotice(context, message: 'Manager mis a jour.', success: true);
               Navigator.of(context).pop();
             },
             child: const Text('Enregistrer'),
@@ -136,8 +138,10 @@ class _DepartementsScreenState extends State<DepartementsScreen> {
       final index = _departements.indexWhere((d) => d.id == created.id);
       if (index == -1) {
         _departements.add(created);
+        showOperationNotice(context, message: 'Departement cree.', success: true);
       } else {
         _departements[index] = created;
+        showOperationNotice(context, message: 'Departement mis a jour.', success: true);
       }
     });
   }

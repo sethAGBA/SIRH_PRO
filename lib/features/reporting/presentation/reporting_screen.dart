@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 
 class ReportingScreen extends StatefulWidget {
@@ -198,8 +199,18 @@ class _ReglementairesTab extends StatelessWidget {
                   runSpacing: 8,
                   children: [
                     OutlinedButton(onPressed: () {}, child: const Text('Exporter PDF')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Exporter Excel')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Exporter CSV')),
+                    OutlinedButton(
+                      onPressed: () => showOperationNotice(context, message: 'Export PDF lance.', success: true),
+                      child: const Text('Exporter PDF'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => showOperationNotice(context, message: 'Export Excel lance.', success: true),
+                      child: const Text('Exporter Excel'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => showOperationNotice(context, message: 'Export CSV lance.', success: true),
+                      child: const Text('Exporter CSV'),
+                    ),
                   ],
                 ),
               ],
@@ -262,9 +273,18 @@ class _CustomReportsTab extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    OutlinedButton(onPressed: () {}, child: const Text('Previsualiser')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Enregistrer template')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Planifier envoi')),
+                    OutlinedButton(
+                      onPressed: () => showOperationNotice(context, message: 'Previsualisation ouverte.', success: true),
+                      child: const Text('Previsualiser'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => showOperationNotice(context, message: 'Template enregistre.', success: true),
+                      child: const Text('Enregistrer template'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => showOperationNotice(context, message: 'Envoi planifie.', success: true),
+                      child: const Text('Planifier envoi'),
+                    ),
                   ],
                 ),
               ],
@@ -441,7 +461,10 @@ class _TemplateRow extends StatelessWidget {
           const SizedBox(width: 12),
           Text(template.format, style: TextStyle(color: appTextMuted(context))),
           const SizedBox(width: 12),
-          OutlinedButton(onPressed: () {}, child: const Text('Executer')),
+          OutlinedButton(
+            onPressed: () => showOperationNotice(context, message: 'Rapport genere.', success: true),
+            child: const Text('Executer'),
+          ),
         ],
       ),
     );

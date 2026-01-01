@@ -5,6 +5,8 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_sidebar.dart';
 import '../../../core/widgets/section_header.dart';
+import '../../../core/security/auth_service.dart';
+import '../../auth/presentation/login_screen.dart';
 import '../../conges_absences/presentation/conges_absences_screen.dart';
 import '../../comptabilite_rh/presentation/comptabilite_rh_screen.dart';
 import '../../departements/presentation/departements_screen.dart';
@@ -29,6 +31,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
+  String? _userName;
+  String? _userEmail;
 
   late final List<AppSidebarItem> _items = [
     const AppSidebarItem(label: 'Tableau de bord', icon: Icons.dashboard),
@@ -73,6 +77,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadUserSummary();
+  }
+
+  Future<void> _loadUserSummary() async {
+    final summary = await AuthService().getCurrentUserSummary();
+    if (!mounted) return;
+    setState(() {
+      _userName = summary['name'];
+      _userEmail = summary['email'];
+    });
+  }
+
+  Future<void> _handleLogout() async {
+    final confirm = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Deconnexion'),
+              content: const Text('Voulez-vous vraiment vous deconnecter ?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Annuler'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+                  child: const Text('Confirmer'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirm) return;
+
+    await AuthService().logout();
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final title = _items[_selectedIndex].label;
 
@@ -83,6 +134,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             items: _items,
             selectedIndex: _selectedIndex,
             onSelect: _onSelect,
+            onLogout: _handleLogout,
+            userName: _userName,
+            userEmail: _userEmail,
           ),
           Expanded(
             child: Column(

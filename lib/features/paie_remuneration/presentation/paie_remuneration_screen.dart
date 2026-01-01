@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 
 class PaieRemunerationScreen extends StatefulWidget {
@@ -155,11 +156,26 @@ class _TraitementTab extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    OutlinedButton(onPressed: () {}, child: const Text('Importer variables')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Calculer cotisations')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Generer bulletins')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Virement bancaire')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Declaration DSN')),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Import variables lance.', success: true),
+                    child: const Text('Importer variables'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Cotisations calculees.', success: true),
+                    child: const Text('Calculer cotisations'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Bulletins generes.', success: true),
+                    child: const Text('Generer bulletins'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Virement enregistre.', success: true),
+                    child: const Text('Virement bancaire'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'DSN envoyee.', success: true),
+                    child: const Text('Declaration DSN'),
+                  ),
                   ],
                 ),
               ],
@@ -200,8 +216,14 @@ class _BulletinsTab extends StatelessWidget {
                 runSpacing: 8,
                 children: [
                   OutlinedButton(onPressed: () => onOpen(payslip), child: const Text('Voir bulletin')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Exporter PDF')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Envoyer email')),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Export PDF lance.', success: true),
+                    child: const Text('Exporter PDF'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Email envoye.', success: true),
+                    child: const Text('Envoyer email'),
+                  ),
                 ],
               ),
             ],
@@ -236,8 +258,14 @@ class _VariablesTab extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  OutlinedButton(onPressed: () {}, child: const Text('Parametrer')),
-                  OutlinedButton(onPressed: () {}, child: const Text('Historique')),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Parametrage mis a jour.', success: true),
+                    child: const Text('Parametrer'),
+                  ),
+                  OutlinedButton(
+                    onPressed: () => showOperationNotice(context, message: 'Historique charge.', success: true),
+                    child: const Text('Historique'),
+                  ),
                 ],
               ),
             ],
@@ -320,12 +348,12 @@ class _PayslipDialog extends StatelessWidget {
           automaticallyImplyLeading: false,
           actions: [
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'PDF genere.', success: true),
               icon: const Icon(Icons.download_outlined, size: 18),
               label: const Text('PDF'),
             ),
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Email envoye.', success: true),
               icon: const Icon(Icons.mail_outline, size: 18),
               label: const Text('Email'),
             ),

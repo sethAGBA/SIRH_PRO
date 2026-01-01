@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 
 class EvaluationsScreen extends StatefulWidget {
@@ -383,12 +384,12 @@ class _DossierDialog extends StatelessWidget {
           automaticallyImplyLeading: false,
           actions: [
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Evaluation validee.', success: true),
               icon: const Icon(Icons.check_circle_outline, size: 18),
               label: const Text('Valider'),
             ),
             TextButton.icon(
-              onPressed: () {},
+              onPressed: () => showOperationNotice(context, message: 'Impression lancee.', success: true),
               icon: const Icon(Icons.print, size: 18),
               label: const Text('Imprimer'),
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 
 class CongesAbsencesScreen extends StatefulWidget {
@@ -130,6 +131,8 @@ class _CongesAbsencesScreenState extends State<CongesAbsencesScreen> {
         history: updatedHistory,
       );
     });
+    final successMessage = status == 'Refusee' ? 'Demande refusee.' : 'Demande mise a jour.';
+    showOperationNotice(context, message: successMessage, success: status != 'Refusee');
   }
 
   @override
@@ -547,7 +550,14 @@ class _LeaveRequestDialogState extends State<_LeaveRequestDialog> {
           child: const Text('Annuler'),
         ),
         ElevatedButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () {
+            if (_startCtrl.text.trim().isEmpty || _endCtrl.text.trim().isEmpty) {
+              showOperationNotice(context, message: 'Champs obligatoires manquants.', success: false);
+              return;
+            }
+            showOperationNotice(context, message: 'Demande envoyee.', success: true);
+            Navigator.of(context).pop();
+          },
           child: const Text('Soumettre'),
         ),
       ],

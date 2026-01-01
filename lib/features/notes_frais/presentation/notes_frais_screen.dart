@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/widgets/app_card.dart';
+import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
 
 class NotesFraisScreen extends StatefulWidget {
@@ -196,8 +197,38 @@ class _TableauTab extends StatelessWidget {
   }
 }
 
-class _FormulaireTab extends StatelessWidget {
+class _FormulaireTab extends StatefulWidget {
   const _FormulaireTab();
+
+  @override
+  State<_FormulaireTab> createState() => _FormulaireTabState();
+}
+
+class _FormulaireTabState extends State<_FormulaireTab> {
+  final _employeCtrl = TextEditingController();
+  final _categorieCtrl = TextEditingController();
+  final _dateCtrl = TextEditingController();
+  final _montantCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _employeCtrl.dispose();
+    _categorieCtrl.dispose();
+    _dateCtrl.dispose();
+    _montantCtrl.dispose();
+    super.dispose();
+  }
+
+  bool _validateRequired() {
+    if (_employeCtrl.text.trim().isEmpty ||
+        _categorieCtrl.text.trim().isEmpty ||
+        _dateCtrl.text.trim().isEmpty ||
+        _montantCtrl.text.trim().isEmpty) {
+      showOperationNotice(context, message: 'Champs obligatoires manquants.', success: false);
+      return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -214,10 +245,10 @@ class _FormulaireTab extends StatelessWidget {
                   spacing: 16,
                   runSpacing: 12,
                   children: [
-                    _FieldBox(label: 'Employe', hint: 'Nom complet'),
-                    _FieldBox(label: 'Categorie', hint: 'Deplacement, Repas, Hebergement, Fournitures'),
-                    _FieldBox(label: 'Date', hint: '2024-05-10'),
-                    _FieldBox(label: 'Montant', hint: 'FCFA 0'),
+                    _FieldBox(label: 'Employe', hint: 'Nom complet', controller: _employeCtrl),
+                    _FieldBox(label: 'Categorie', hint: 'Deplacement, Repas, Hebergement, Fournitures', controller: _categorieCtrl),
+                    _FieldBox(label: 'Date', hint: '2024-05-10', controller: _dateCtrl),
+                    _FieldBox(label: 'Montant', hint: 'FCFA 0', controller: _montantCtrl),
                     _FieldBox(label: 'Km (si deplacement)', hint: '0'),
                     _FieldBox(label: 'Barreme kilometrique', hint: 'Auto'),
                     _FieldBox(label: 'Plafond categorie', hint: 'Auto'),
@@ -229,10 +260,34 @@ class _FormulaireTab extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    OutlinedButton(onPressed: () {}, child: const Text('Scanner justificatifs')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Calculer barreme')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Verifier plafonds')),
-                    OutlinedButton(onPressed: () {}, child: const Text('Soumettre validation')),
+                    OutlinedButton(
+                      onPressed: () {
+                        if (!_validateRequired()) return;
+                        showOperationNotice(context, message: 'Justificatifs scannes.', success: true);
+                      },
+                      child: const Text('Scanner justificatifs'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () {
+                        if (!_validateRequired()) return;
+                        showOperationNotice(context, message: 'Bareme calcule.', success: true);
+                      },
+                      child: const Text('Calculer barreme'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () {
+                        if (!_validateRequired()) return;
+                        showOperationNotice(context, message: 'Plafonds verifies.', success: true);
+                      },
+                      child: const Text('Verifier plafonds'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () {
+                        if (!_validateRequired()) return;
+                        showOperationNotice(context, message: 'Demande soumise.', success: true);
+                      },
+                      child: const Text('Soumettre validation'),
+                    ),
                   ],
                 ),
               ],
@@ -374,16 +429,22 @@ class _StatusChip extends StatelessWidget {
 }
 
 class _FieldBox extends StatelessWidget {
-  const _FieldBox({required this.label, required this.hint});
+  const _FieldBox({
+    required this.label,
+    required this.hint,
+    this.controller,
+  });
 
   final String label;
   final String hint;
+  final TextEditingController? controller;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 240,
       child: TextField(
+        controller: controller,
         decoration: InputDecoration(labelText: label, hintText: hint),
       ),
     );
@@ -527,12 +588,12 @@ class _ExpenseDetailDialog extends StatelessWidget {
         automaticallyImplyLeading: false,
         actions: [
           TextButton.icon(
-            onPressed: () {},
+            onPressed: () => showOperationNotice(context, message: 'Note de frais validee.', success: true),
             icon: const Icon(Icons.check_circle_outline, size: 18),
             label: const Text('Valider'),
           ),
           TextButton.icon(
-            onPressed: () {},
+            onPressed: () => showOperationNotice(context, message: 'Note de frais refusee.', success: false),
             icon: const Icon(Icons.block, size: 18),
             label: const Text('Refuser'),
           ),
@@ -582,7 +643,7 @@ class _ExpenseDetailDialog extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => showOperationNotice(context, message: 'Justificatif ajoute.', success: true),
                     icon: const Icon(Icons.upload_file),
                     label: const Text('Ajouter justificatif'),
                   ),
