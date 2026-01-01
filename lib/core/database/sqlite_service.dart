@@ -8,7 +8,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'dart:convert';
 
 class SQLiteService {
-  static const int _schemaVersion = 11;
+  static const int _schemaVersion = 12;
   static final SQLiteService _instance = SQLiteService._internal();
   factory SQLiteService() => _instance;
   SQLiteService._internal();
@@ -121,6 +121,9 @@ class SQLiteService {
       }
       if (version == 11) {
         await _migrateToV11(db);
+      }
+      if (version == 12) {
+        await _migrateToV12(db);
       }
     }
   }
@@ -277,6 +280,20 @@ class SQLiteService {
   }
 
   Future<void> _migrateToV11(Database db) async {
+    final table = 'conges_absences';
+    final columns = _schema[table]!;
+    final exists = await _tableExists(db, table);
+    if (!exists) {
+      final sql = 'CREATE TABLE $table (${columns.entries.map((e) => '${e.key} ${e.value}').join(', ')})';
+      await db.execute(sql);
+      return;
+    }
+    for (final entry in columns.entries) {
+      await _addColumnIfMissing(db, table, entry.key, entry.value);
+    }
+  }
+
+  Future<void> _migrateToV12(Database db) async {
     final table = 'conges_absences';
     final columns = _schema[table]!;
     final exists = await _tableExists(db, table);
@@ -533,6 +550,7 @@ final Map<String, Map<String, String>> _schema = {
     'contact': 'TEXT',
     'commentaire': 'TEXT',
     'decision_motif': 'TEXT',
+    'historique': 'TEXT',
     'created_at': 'INTEGER',
     'updated_at': 'INTEGER',
   },

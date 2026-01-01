@@ -15,6 +15,7 @@ class CongeAbsence {
     required this.contact,
     required this.commentaire,
     required this.decisionMotif,
+    required this.history,
   });
 
   final String id;
@@ -32,4 +33,35 @@ class CongeAbsence {
   final String contact;
   final String commentaire;
   final String decisionMotif;
+  final List<CongeHistoryEntry> history;
+}
+
+class CongeHistoryEntry {
+  const CongeHistoryEntry({
+    required this.title,
+    required this.subtitle,
+    required this.timestamp,
+    required this.validator,
+  });
+
+  final String title;
+  final String subtitle;
+  final int timestamp;
+  final String validator;
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'subtitle': subtitle,
+        'timestamp': timestamp,
+        'validator': validator,
+      };
+
+  factory CongeHistoryEntry.fromJson(Map<String, dynamic> json) {
+    return CongeHistoryEntry(
+      title: (json['title'] as String?) ?? '',
+      subtitle: (json['subtitle'] as String?) ?? '',
+      timestamp: (json['timestamp'] as int?) ?? 0,
+      validator: (json['validator'] as String?) ?? '',
+    );
+  }
 }

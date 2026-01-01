@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/database/dao/dao_registry.dart';
+import '../../../core/security/auth_service.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/operation_notice.dart';
 import '../../../core/widgets/section_header.dart';
@@ -165,6 +168,7 @@ class _CongesAbsencesScreenState extends State<CongesAbsencesScreen> {
       contact: (row['contact'] as String?) ?? '',
       commentaire: (row['commentaire'] as String?) ?? '',
       decisionMotif: (row['decision_motif'] as String?) ?? '',
+      history: _decodeHistory((row['historique'] as String?) ?? ''),
     );
   }
 
@@ -186,6 +190,7 @@ class _CongesAbsencesScreenState extends State<CongesAbsencesScreen> {
       'contact': conge.contact,
       'commentaire': conge.commentaire,
       'decision_motif': conge.decisionMotif,
+      'historique': jsonEncode(conge.history.map((entry) => entry.toJson()).toList()),
       'updated_at': now,
       if (forInsert) 'created_at': now,
     };
@@ -214,6 +219,7 @@ class _CongesAbsencesScreenState extends State<CongesAbsencesScreen> {
       contact: conge.contact,
       commentaire: conge.commentaire,
       decisionMotif: conge.decisionMotif,
+      history: conge.history,
     );
   }
 
@@ -254,7 +260,38 @@ class _CongesAbsencesScreenState extends State<CongesAbsencesScreen> {
     );
   }
 
+  void _openHistory(CongeAbsence conge) {
+    final entries = _buildHistoryEntries(conge);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Historique validations'),
+        content: SizedBox(
+          width: 420,
+          child: entries.isEmpty
+              ? const Text('Aucun historique disponible.')
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) => _HistoryTimelineItem(
+                    entry: entries[index],
+                    isLast: index == entries.length - 1,
+                  ),
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _updateStatus(CongeAbsence conge, String status, {String decisionMotif = ''}) async {
+    final currentUser = await AuthService().getCurrentUserSummary();
+    final validatorName = currentUser['name'] ?? 'Utilisateur';
     final updated = CongeAbsence(
       id: conge.id,
       employeId: conge.employeId,
@@ -271,6 +308,12 @@ class _CongesAbsencesScreenState extends State<CongesAbsencesScreen> {
       contact: conge.contact,
       commentaire: conge.commentaire,
       decisionMotif: decisionMotif.isEmpty ? conge.decisionMotif : decisionMotif,
+      history: _appendHistory(
+        conge.history,
+        status,
+        decisionMotif: decisionMotif,
+        validatorName: validatorName,
+      ),
     );
     await DaoRegistry.instance.conges.update(updated.id, _congeToRow(updated, forInsert: false));
     await _loadRequests(resetPage: true);
@@ -391,6 +434,7 @@ class _CongesAbsencesScreenState extends State<CongesAbsencesScreen> {
                   onDateApply: () => _loadRequests(resetPage: true),
                   onNewRequest: () => _openForm(),
                   onOpenDetail: _openDetail,
+                  onHistory: _openHistory,
                   onValidateN1: (conge) => _updateStatus(conge, 'En attente RH'),
                   onValidateRh: (conge) => _updateStatus(conge, 'Validee'),
                   onRefuse: _refuse,
@@ -438,6 +482,7 @@ class _RequestsTab extends StatelessWidget {
     required this.onDateApply,
     required this.onNewRequest,
     required this.onOpenDetail,
+    required this.onHistory,
     required this.onValidateN1,
     required this.onValidateRh,
     required this.onRefuse,
@@ -464,6 +509,7 @@ class _RequestsTab extends StatelessWidget {
   final VoidCallback onDateApply;
   final VoidCallback onNewRequest;
   final ValueChanged<CongeAbsence> onOpenDetail;
+  final ValueChanged<CongeAbsence> onHistory;
   final ValueChanged<CongeAbsence> onValidateN1;
   final ValueChanged<CongeAbsence> onValidateRh;
   final ValueChanged<CongeAbsence> onRefuse;
@@ -641,6 +687,11 @@ class _RequestsTab extends StatelessWidget {
                         tooltip: 'Voir details',
                         icon: const Icon(Icons.visibility_outlined),
                         onPressed: () => onOpenDetail(request),
+                      ),
+                      IconButton(
+                        tooltip: 'Historique',
+                        icon: const Icon(Icons.timeline_outlined),
+                        onPressed: () => onHistory(request),
                       ),
                       IconButton(
                         tooltip: 'Valider N+1',
@@ -931,13 +982,15 @@ class _CongeFormScreenState extends State<_CongeFormScreen> {
     return true;
   }
 
-  void _save() {
+  Future<void> _save() async {
     setState(() => _error = null);
     if (!_validate()) {
       setState(() {});
       return;
     }
 
+    final currentUser = await AuthService().getCurrentUserSummary();
+    final creatorName = currentUser['name'] ?? 'Utilisateur';
     final start = DateTime.parse(_startCtrl.text.trim());
     final end = DateTime.parse(_endCtrl.text.trim());
     final reprise = _repriseCtrl.text.trim().isEmpty ? null : DateTime.tryParse(_repriseCtrl.text.trim());
@@ -960,6 +1013,7 @@ class _CongeFormScreenState extends State<_CongeFormScreen> {
       contact: _contactCtrl.text.trim(),
       commentaire: _commentCtrl.text.trim(),
       decisionMotif: widget.conge?.decisionMotif ?? '',
+      history: _buildInitialHistory(widget.conge?.history, creatorName),
     );
     Navigator.of(context).pop(conge);
   }
@@ -1487,6 +1541,73 @@ class _BalanceRow {
   final String absencesJustifiees;
 }
 
+class _HistoryTimelineItem extends StatelessWidget {
+  const _HistoryTimelineItem({required this.entry, required this.isLast});
+
+  final CongeHistoryEntry entry;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              if (!isLast)
+                Container(
+                  width: 2,
+                  height: 28,
+                  color: AppColors.primary.withOpacity(0.3),
+                ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  entry.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: appTextPrimary(context),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  entry.subtitle,
+                  style: TextStyle(color: appTextMuted(context)),
+                ),
+                if (entry.validator.isNotEmpty)
+                  Text(
+                    'Par ${entry.validator}',
+                    style: TextStyle(color: appTextMuted(context), fontSize: 12),
+                  ),
+                const SizedBox(height: 2),
+                Text(
+                  _formatDateTime(entry.timestamp),
+                  style: TextStyle(color: appTextMuted(context), fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 String _formatDate(DateTime date) {
   final year = date.year.toString().padLeft(4, '0');
   final month = date.month.toString().padLeft(2, '0');
@@ -1494,8 +1615,154 @@ String _formatDate(DateTime date) {
   return '$year-$month-$day';
 }
 
+List<CongeHistoryEntry> _buildHistoryEntries(CongeAbsence conge) {
+  if (conge.history.isNotEmpty) {
+    return conge.history;
+  }
+  final now = DateTime.now().millisecondsSinceEpoch;
+  final entries = <CongeHistoryEntry>[
+    CongeHistoryEntry(
+      title: 'Demande creee',
+      subtitle: 'Le ${_formatDate(conge.startDate)}',
+      timestamp: now,
+      validator: '',
+    ),
+  ];
+
+  if (conge.status == 'En attente RH' || conge.status == 'Validee' || conge.status == 'Refusee') {
+    entries.add(
+      CongeHistoryEntry(
+        title: 'Validee N+1',
+        subtitle: 'En attente RH',
+        timestamp: now,
+        validator: '',
+      ),
+    );
+  }
+
+  if (conge.status == 'Validee') {
+    entries.add(
+      CongeHistoryEntry(
+        title: 'Validee RH',
+        subtitle: 'Decision finale',
+        timestamp: now,
+        validator: '',
+      ),
+    );
+  }
+
+  if (conge.status == 'Refusee') {
+    final reason = conge.decisionMotif.isEmpty ? 'Motif non renseigne' : conge.decisionMotif;
+    entries.add(
+      CongeHistoryEntry(
+        title: 'Refusee RH',
+        subtitle: reason,
+        timestamp: now,
+        validator: '',
+      ),
+    );
+  }
+
+  if (conge.status == 'Annulee') {
+    entries.add(
+      CongeHistoryEntry(
+        title: 'Annulee',
+        subtitle: 'Demande annulee par le collaborateur',
+        timestamp: now,
+        validator: '',
+      ),
+    );
+  }
+
+  return entries;
+}
+
 String _display(String value) {
   return value.isEmpty ? 'A definir' : value;
+}
+
+List<CongeHistoryEntry> _decodeHistory(String raw) {
+  if (raw.trim().isEmpty) return [];
+  try {
+    final list = jsonDecode(raw);
+    if (list is! List) return [];
+    return list
+        .map(
+          (item) => item is Map<String, dynamic>
+              ? CongeHistoryEntry.fromJson(item)
+              : CongeHistoryEntry.fromJson(Map<String, dynamic>.from(item as Map)),
+        )
+        .toList();
+  } catch (_) {
+    return [];
+  }
+}
+
+List<CongeHistoryEntry> _appendHistory(
+  List<CongeHistoryEntry> existing,
+  String status, {
+  String decisionMotif = '',
+  String validatorName = '',
+}) {
+  final entries = List<CongeHistoryEntry>.from(existing);
+  final now = DateTime.now().millisecondsSinceEpoch;
+  if (entries.isEmpty) {
+    entries.add(
+      CongeHistoryEntry(
+        title: 'Demande creee',
+        subtitle: 'Creation',
+        timestamp: now,
+        validator: validatorName,
+      ),
+    );
+  }
+  var title = 'Mise a jour';
+  var subtitle = status;
+
+  if (status == 'En attente RH') {
+    title = 'Validee N+1';
+    subtitle = 'En attente RH';
+  } else if (status == 'Validee') {
+    title = 'Validee RH';
+    subtitle = 'Decision finale';
+  } else if (status == 'Refusee') {
+    title = 'Refusee RH';
+    subtitle = decisionMotif.isEmpty ? 'Motif non renseigne' : decisionMotif;
+  } else if (status == 'Annulee') {
+    title = 'Annulee';
+    subtitle = 'Demande annulee par le collaborateur';
+  }
+
+  entries.add(
+    CongeHistoryEntry(
+      title: title,
+      subtitle: subtitle,
+      timestamp: now,
+      validator: validatorName,
+    ),
+  );
+  return entries;
+}
+
+List<CongeHistoryEntry> _buildInitialHistory(List<CongeHistoryEntry>? existing, String creatorName) {
+  if (existing != null && existing.isNotEmpty) return existing;
+  return [
+    CongeHistoryEntry(
+      title: 'Demande creee',
+      subtitle: 'Creation',
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+      validator: creatorName,
+    ),
+  ];
+}
+
+String _formatDateTime(int timestamp) {
+  if (timestamp == 0) return 'Date inconnue';
+  final date = DateTime.fromMillisecondsSinceEpoch(timestamp);
+  final datePart = _formatDate(date);
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  return '$datePart $hour:$minute';
 }
 
 Color? _statusColor(String status) {
